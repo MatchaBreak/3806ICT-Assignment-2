@@ -1,0 +1,6 @@
+int32 botID
+string direction
+int32 currentX
+int32 currentY
+---
+bool success

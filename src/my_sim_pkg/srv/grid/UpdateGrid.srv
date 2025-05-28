@@ -1,0 +1,5 @@
+int32 tilePositionX
+int32 tilePositionY
+int32 tileType
+---
+bool success

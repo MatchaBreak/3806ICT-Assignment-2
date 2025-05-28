@@ -1,0 +1,33 @@
+<launch>
+  <!-- Spawn TurtleBot3 Model 1 -->
+  <group ns="turtlebot3_burger_1">
+    <param name="robot_description" command="$(find xacro)/xacro $(find turtlebot3_description)/urdf/turtlebot3_burger.urdf.xacro"/>
+    <node pkg="gazebo_ros" type="spawn_model" name="spawn_turtlebot3_1"
+          args="-urdf -param robot_description -model turtlebot3_burger_1 -x 7.0 -y 7.0 -z 0.1"
+          output="screen"/>
+  </group>
+
+  <!-- Spawn TurtleBot3 Model 2 -->
+  <group ns="turtlebot3_burger_2">
+    <param name="robot_description" command="$(find xacro)/xacro $(find turtlebot3_description)/urdf/turtlebot3_burger.urdf.xacro"/>
+    <node pkg="gazebo_ros" type="spawn_model" name="spawn_turtlebot3_2"
+          args="-urdf -param robot_description -model turtlebot3_burger_2 -x 9.0 -y 7.0 -z 0.1"
+          output="screen"/>
+  </group>
+
+  <!-- Spawn TurtleBot3 Model 3 -->
+  <group ns="turtlebot3_burger_3">
+    <param name="robot_description" command="$(find xacro)/xacro $(find turtlebot3_description)/urdf/turtlebot3_burger.urdf.xacro"/>
+    <node pkg="gazebo_ros" type="spawn_model" name="spawn_turtlebot3_3"
+          args="-urdf -param robot_description -model turtlebot3_burger_3 -x 7.0 -y 9.0 -z 0.1"
+          output="screen"/>
+  </group>
+
+  <!-- Spawn TurtleBot3 Model 4 -->
+  <group ns="turtlebot3_burger_4">
+    <param name="robot_description" command="$(find xacro)/xacro $(find turtlebot3_description)/urdf/turtlebot3_burger.urdf.xacro"/>
+    <node pkg="gazebo_ros" type="spawn_model" name="spawn_turtlebot3_4"
+          args="-urdf -param robot_description -model turtlebot3_burger_4 -x 9.0 -y 9.0 -z 0.1"
+          output="screen"/>
+  </group>
+</launch>

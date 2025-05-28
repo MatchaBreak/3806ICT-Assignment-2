@@ -1,0 +1,16 @@
+<launch>
+  <!-- Load shared settings into ROS parameter server -->
+  <rosparam file="$(find my_sim_pkg)/config/shared_settings.yaml" command="load" />
+
+  <!-- Start Grid Manager -->
+  <node pkg="my_sim_pkg" type="grid_manager.py" name="grid_manager" output="screen"/>
+
+  <!-- Start Relay Server -->
+  <node pkg="my_sim_pkg" type="relay_server.py" name="relay_server" output="screen"/>
+
+  <!-- Start Dispatcher -->
+  <node pkg="my_sim_pkg" type="dispatcher.py" name="dispatcher" output="screen"/>
+
+  <!-- Start Robot Controller -->
+  <node pkg="my_sim_pkg" type="robot_controller_node.py" name="robot_controller_node" output="screen"/>
+</launch>

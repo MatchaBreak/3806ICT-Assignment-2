@@ -1,0 +1,63 @@
+#define robot1 1;
+#define robot2 2;
+#define robot3 3;
+#define robot4 4;
+
+#define rows 16;
+#define cols 16;
+
+#define maxPizzasPerRobot 1;
+
+#define unvisited 0;
+#define visited -1;
+#define obstacle -2;
+#define pizza -3;
+#define house -4; // Stefan: potential destinations for the robots
+
+#define HOME_X 8; // hardcoded as (8, 8) for now, can be changed later.
+#define HOME_Y 8;
+
+var pizzasToDeliver = 4;
+
+var world[rows][cols]:{pizza..robot4} = [ // accept values from pizza (-3) to robot4 (4).
+0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 
+0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 
+0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 
+0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 
+0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 
+0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 
+0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 
+0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 
+0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 
+0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 
+0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 
+0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 
+0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 
+0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 
+0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 
+0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0
+];
+
+var r1X:{0..rows-1} = 7; // each robot's x and y position
+var r1Y:{0..cols-1} = 8;
+
+var r2X:{0..rows-1} = 9;
+var r2Y:{0..cols-1} = 8;
+
+var r3X:{0..rows-1} = 8;
+var r3Y:{0..cols-1} = 7;
+
+var r4X:{0..rows-1} = 8;
+var r4Y:{0..cols-1} = 9;
+
+var r1deliveryX = 4;
+var r1deliveryY = 11;
+
+var r2deliveryX = 10;
+var r2deliveryY = 13;
+
+var r3deliveryX = 13;
+var r3deliveryY = 14;
+
+var r4deliveryX = 5;
+var r4deliveryY = 5;

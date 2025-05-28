@@ -1,0 +1,1 @@
+#to spawn obstacles which turtlebot sensors can pick up

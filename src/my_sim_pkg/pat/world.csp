@@ -1,0 +1,64 @@
+#define robot1 1;
+#define robot2 2;
+#define robot3 3;
+#define robot4 4;
+
+#define rows 16;
+#define cols 16;
+
+#define maxPizzasPerRobot 1;
+
+#define unvisited 0;
+#define visited -1;
+#define obstacle -2;
+#define pizza -3;
+#define house -4;
+
+#define HOME_X 8;
+#define HOME_Y 8;
+
+var pizzasToDeliver = 4;
+
+var world[rows][cols]:{-4..4} = [
+0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, -4, 0, 0,
+0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+0, 0, 0, 0, 0, 0, 0, 1, 0, 2, 0, 0, 0, 0, 0, 0,
+0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+0, 0, 0, 0, 0, 0, 0, 3, 0, 4, 0, 0, 0, 0, 0, 0,
+0, -4, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, -4, 0, 0, 0,
+0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, -4, 0, 0,
+0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0
+];
+
+var r1X = 7;
+var r1Y = 7;
+
+var r2X = 9;
+var r2Y = 7;
+
+var r3X = 7;
+var r3Y = 9;
+
+var r4X = 9;
+var r4Y = 9;
+
+var r1deliveryX = 10;
+var r1deliveryY = 1;
+
+var r2deliveryX = 14;
+var r2deliveryY = 13;
+
+var r3deliveryX = 12;
+var r3deliveryY = 12;
+
+var r4deliveryX = 3;
+var r4deliveryY = 13;
+

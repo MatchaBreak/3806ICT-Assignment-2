@@ -1,0 +1,5 @@
+int32 botId
+---
+bool orderTaken
+int32 deliveryLocationX
+int32 deliveryLocationY

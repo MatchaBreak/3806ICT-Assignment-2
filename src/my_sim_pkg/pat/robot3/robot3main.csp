@@ -1,0 +1,63 @@
+// this file is the main logic for a robot to decide which path to take.
+// it depends on ../world.csp to be updated with the updated world.
+
+// include world.csp so the model understands the world.
+#include "..\world.csp";
+
+// ------- define conditions -------
+// robot is home if it's x and y position are at the home location.
+#define homeR3 (r3X == HOME_X && r3Y == HOME_Y); 
+
+// pizza is delivered if robot is at the delivery location.
+#define pizzaDeliveredR3 (r3X == r3deliveryX && r3Y == r3deliveryY);
+
+// condition to check if robot can move in any direction. checking that it's not at the boundary and that there's not an obstacle or another robot in it's way.
+#define MoveUpConditionR3 (r3X != 0) && (world[r3X-1][r3Y] != obstacle && world[r3X-1][r3Y] != house &&
+    world[r3X-1][r3Y] != robot1 && world[r3X-1][r3Y] != robot2 &&
+    world[r3X-1][r3Y] != robot3 && world[r3X-1][r3Y] != robot4);
+#define MoveDownConditionR3 (r3X != rows - 1) && (world[r3X+1][r3Y] != obstacle && world[r3X+1][r3Y] != house &&
+    world[r3X+1][r3Y] != robot1 && world[r3X+1][r3Y] != robot2 &&
+    world[r3X+1][r3Y] != robot3 && world[r3X+1][r3Y] != robot4);
+#define MoveLeftConditionR3 (r3Y != 0) && (world[r3X][r3Y-1] != obstacle && world[r3X][r3Y-1] != house &&
+    world[r3X][r3Y-1] != robot1 && world[r3X][r3Y-1] != robot2 &&
+    world[r3X][r3Y-1] != robot3 && world[r3X][r3Y-1] != robot4);
+#define MoveRightConditionR3 (r3Y != cols - 1) && (world[r3X][r3Y+1] != obstacle && world[r3X][r3Y+1] != house &&
+    world[r3X][r3Y+1] != robot1 && world[r3X][r3Y+1] != robot2 &&
+    world[r3X][r3Y+1] != robot3 && world[r3X][r3Y+1] != robot4);
+
+// conditions to check for visited cells in any direction.
+#define MoveUpCondVisitedR3 (world[r3X-1][r3Y] == visited);
+#define MoveDownCondVisitedR3 (world[r3X+1][r3Y] == visited);
+#define MoveLeftCondVisitedR3 (world[r3X][r3Y-1] == visited);
+#define MoveRightCondVisitedR3 (world[r3X][r3Y+1] == visited);
+
+// conditions to check for not visited cells in any direction.
+#define MoveUpCondNotVisitedR3 (world[r3X-1][r3Y] != visited);
+#define MoveDownCondNotVisitedR3 (world[r3X+1][r3Y] != visited);
+#define MoveLeftCondNotVisitedR3 (world[r3X][r3Y-1] != visited);
+#define MoveRightCondNotVisitedR3 (world[r3X][r3Y+1] != visited);
+
+// ------- movement statements --------
+
+// move up
+MoveUpIfVisitedR3() = [MoveUpConditionR3 && MoveUpCondVisitedR3]moveUpR3{r3X = r3X - 1; world[r3X][r3Y] = visited; } -> Skip;
+MoveUpIfNotVisitedR3() = [MoveUpConditionR3 && MoveUpCondNotVisitedR3]moveUpR3{r3X = r3X - 1; world[r3X][r3Y] = visited;} -> Skip;
+
+// move down
+MoveDownIfVisitedR3() = [MoveDownConditionR3 && MoveDownCondVisitedR3]moveDownR3{r3X = r3X + 1; world[r3X][r3Y] = visited; } -> Skip;
+MoveDownIfNotVisitedR3() = [MoveDownConditionR3 && MoveDownCondNotVisitedR3]moveDownR3{r3X = r3X + 1; world[r3X][r3Y] = visited;} -> Skip;
+
+// move left
+MoveLeftIfVisitedR3() = [MoveLeftConditionR3 && MoveLeftCondVisitedR3]moveLeftR3{r3Y = r3Y - 1; world[r3X][r3Y] = visited; } -> Skip;
+MoveLeftIfNotVisitedR3() = [MoveLeftConditionR3 && MoveLeftCondNotVisitedR3]moveLeftR3{r3Y = r3Y - 1; world[r3X][r3Y] = visited;} -> Skip;
+
+// move right
+MoveRightIfVisitedR3() = [MoveRightConditionR3 && MoveRightCondVisitedR3]moveRightR3{r3Y = r3Y + 1; world[r3X][r3Y] = visited; } -> Skip;
+MoveRightIfNotVisitedR3() = [MoveRightConditionR3 && MoveRightCondNotVisitedR3]moveRightR3{r3Y = r3Y + 1; world[r3X][r3Y] = visited;} -> Skip;
+
+// move in any direction if not visited or visited
+MoveIfNotVisitedR3() = MoveUpIfNotVisitedR3() [] MoveDownIfNotVisitedR3() [] MoveLeftIfNotVisitedR3() [] MoveRightIfNotVisitedR3();
+MoveIfVisitedR3() = MoveUpIfVisitedR3() [] MoveDownIfVisitedR3() [] MoveLeftIfVisitedR3() [] MoveRightIfVisitedR3();
+
+NotVisitedMoveR3() = (MoveIfVisitedR3() [] MoveIfNotVisitedR3());NotVisitedMoveR3(); // prioritises not visited cells but will visit already visited cells if no other path found.
+VisitedMoveR3() = (MoveIfNotVisitedR3() [] MoveIfVisitedR3());VisitedMoveR3(); // prioritises visited cells but will visit not visited cells if no other path found.

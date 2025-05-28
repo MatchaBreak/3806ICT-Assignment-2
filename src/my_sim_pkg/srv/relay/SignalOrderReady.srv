@@ -1,0 +1,5 @@
+int32 botID
+int32 deliveryLocationX
+int32 deliveryLocationY
+---
+bool success

@@ -1,0 +1,77 @@
+3806ICT-Assignment-2/            ← Workspace root
+└── src/
+    └── my_sim_pkg/              ← Our package
+        ├── CMakeLists.txt
+        ├── package.xml
+        ├── launch/              ← Put .launch files here
+        │   └── sim.launch
+        ├── worlds/              ← Our worlds
+        │   ├── tubgbot_depot.sdf
+        │   └── thumbnails/
+        ├── models/              ← Our models
+        │   ├── asphalt_plane/..
+        │   ├── cardboard_box/..
+        |   └── turtlebot3_burger/..
+        └── src/                 ←  C++/Python nodes go here
+            └── my_node.cpp
+
+#sourcing
+source ~/3806ICT-Assignment-2/devel/setup.bash
+source /opt/ros/noetic/setup.bash
+
+#add more notes for running commands
+roscore
+
+#kill gazebo faster
+pkill -f gazebo
+
+#clean build
+rm -rf build
+rm -rf devel
+
+#compile
+source devel/setup.bash
+catkin_make
+
+# to launch our specific world
+roslaunch my_sim_pkg world_simulation.launch
+
+#to launch the robots 
+roslaunch my_sim_pkg spawn_robots.launch
+
+#to launch the robot controll system 
+roslaunch my_sim_pkg robot_system.launch
+
+stefan's path: ss << "/opt/mono/MONO-PAT-v3.6.0/PAT3.exe";
+
+# To check each robot's odometry
+rostopic echo /turtlebot3_burger_1/odom
+rostopic echo /turtlebot3_burger_2/odom
+rostopic echo /turtlebot3_burger_3/odom
+rostopic echo /turtlebot3_burger_4/odom
+
+// Clear local build
+rm -rf build devel
+
+#run each individually
+rosrun my_sim_pkg grid_manager
+rosrun my_sim_pkg dispatcher
+rosrun my_sim_pkg robot_controller_node
+
+#for plugins
+sudo apt install ros-noetic-gazebo-plugins
+
+
+#path for later .urdf injection? 
+/opt/ros/noetic/share/turtlebot3_description/
+
+
+#add urdf to trutlebots? 
+/opt/ros/noetic/share/turtlebot3_description/urdf
+
+#install to make the local custom grid work: 
+sudo apt install mesa-utils
+sudo apt install libgl1-mesa-dev
+
+# for python transition
+ls /root/ros_python/3806ICT-Assignment-2/src/my_sim_pkg/scripts/
