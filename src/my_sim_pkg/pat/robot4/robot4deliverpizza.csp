@@ -1,5 +1,0 @@
-// include main file which has all the definitions and movesets.
-#include "robot4main.csp";
-
-// prioritise visited positions when delivering pizzas so that it will be fast.
-#assert VisitedMoveR4() reaches pizzaDeliveredR4;

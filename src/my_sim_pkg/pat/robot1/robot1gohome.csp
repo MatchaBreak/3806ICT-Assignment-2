@@ -1,5 +1,0 @@
-// include main file which has all the definitions and movesets.
-#include "robot1main.csp";
-
-// prioritise visited positions when returning home to avoid obstacles or running into new pizzas which can't be carried.
-#assert VisitedMoveR1() reaches homeR1;

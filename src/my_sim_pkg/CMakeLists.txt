@@ -37,18 +37,17 @@ catkin_package(
 
 
 catkin_install_python(PROGRAMS
-  scripts/grid_manager.py
-  scripts/relay_server.py
-  scripts/dispatcher.py
-  scripts/robot_controller_node.py
+  src/grid_manager.py
+  src/relay_server.py
+  src/dispatcher.py
+  src/robot_controller_node.py
   scripts/spawn_houses.py 
   scripts/spawn_obstacles.py 
-  #python_pkgs/pat_helper.py
   DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}
 )
 
 install(
-  DIRECTORY python_pkgs/
+  DIRECTORY src/
   DESTINATION ${CATKIN_PACKAGE_PYTHON_DESTINATION}
 )
 
