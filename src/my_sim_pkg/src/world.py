@@ -53,7 +53,7 @@ class World:
 
     def set_tile(self, x, y, value):
         if 0 <= x < self.width and 0 <= y < self.height:
-            self.grid[x][y] = value
+            self.grid[y][x] = value
 
     def get_tile(self, x, y):
         if 0 <= x < self.width and 0 <= y < self.height:

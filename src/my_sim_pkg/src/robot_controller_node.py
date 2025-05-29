@@ -13,7 +13,7 @@ from my_sim_pkg.srv import (
 from a_star import AStar
 from collections import deque
 from threading import Lock
-from world import Settings
+from world import Settings, World
 
 NUM_ROBOTS = Settings.NUM_ROBOTS
 GRID_SIZE = Settings.GRID_SIZE
@@ -92,7 +92,8 @@ def move_robot(bot_id, update_pos_client, update_grid_client, set_model_client):
 
 def controller_main():
     rospy.init_node('robot_controller_node')
-
+    world = World()
+    
     signal_queue = rospy.ServiceProxy('/signal_queued_up', SignalQueuedUp)
     listen_order = rospy.ServiceProxy('/listen_to_order_status', ListenToOrderStatus)
     update_pos = rospy.ServiceProxy('/update_current_bot_position', UpdateCurrentBotPosition)
@@ -112,59 +113,84 @@ def controller_main():
         if len(robot_positions) == NUM_ROBOTS:
             for i in range(1, NUM_ROBOTS + 1):
                 robot_locations[i] = robot_positions[i]
-                rospy.loginfo(f"Robot {i} initialized at {robot_locations[i]}")
+                rospy.loginfo(f"Robot {i} initialised at {robot_locations[i]}")
             break
         rate.sleep()
 
+    def handle_queuing(i):
+        try:
+            response = signal_queue(botID=i)
+            if response.success:
+                robot_states[i] = RobotState.WAITING_FOR_ORDER
+        except rospy.ServiceException:
+            pass
+
+    def handle_waiting_for_order(i):
+        try:
+            response = listen_order(botId=i)
+            if response.orderTaken:
+                delivery_x, delivery_y = response.deliveryLocationX, response.deliveryLocationY
+                start = robot_locations[i]
+                goal = (delivery_x, delivery_y)
+                a_star = AStar(start, goal, world)
+                path = a_star.find_path()
+                if path:
+                    robot_paths[i] = deque(path[1:])
+                    robot_deliveries[i] = goal
+                    robot_states[i] = RobotState.DELIVERING
+                    rospy.loginfo(f"Robot {i} path: {list(robot_paths[i])}")
+                else:
+                    rospy.logwarn(f"Robot {i} has no path to ({delivery_x}, {delivery_y})")
+        except rospy.ServiceException:
+            pass
+
+    def handle_delivering(i):
+        move_robot(i, update_pos, update_grid, set_model_state)
+        if not robot_paths[i]:
+            delivery_x, delivery_y = robot_deliveries[i]
+            current_x, current_y = robot_locations[i]
+            if (current_x, current_y) == (delivery_x, delivery_y):
+                rospy.loginfo(f"Robot {i} delivered to ({delivery_x}, {delivery_y})")
+                a_star = AStar((current_x, current_y), Settings.robot_positions[i], world)
+                path = a_star.find_path()
+                robot_paths[i] = deque(path[1:] if path else [])
+                robot_states[i] = RobotState.GOING_HOME
+            else:
+                rospy.logwarn(f"Robot {i} failed to reach ({delivery_x}, {delivery_y})")
+
+    def handle_going_home(i):
+        move_robot(i, update_pos, update_grid, set_model_state)
+        if not robot_paths[i]:
+            robot_states[i] = RobotState.QUEUING
+
+    state_handlers = {
+        RobotState.QUEUING: handle_queuing,
+        RobotState.WAITING_FOR_ORDER: handle_waiting_for_order,
+        RobotState.DELIVERING: handle_delivering,
+        RobotState.GOING_HOME: handle_going_home,
+    }
+   
     while not rospy.is_shutdown():
         for i in range(1, NUM_ROBOTS + 1):
-            if robot_states[i] == RobotState.QUEUING:
-                try:
-                    response = signal_queue(botID=i)
-                    if response.success:
-                        robot_states[i] = RobotState.WAITING_FOR_ORDER
-                except rospy.ServiceException:
-                    pass
-
-            elif robot_states[i] == RobotState.WAITING_FOR_ORDER:
-                try:
-                    response = listen_order(botId=i)
-                    if response.orderTaken:
-                        delivery_x, delivery_y = response.deliveryLocationX, response.deliveryLocationY
-                        start = robot_locations[i]
-                        goal = (delivery_x, delivery_y)
-                        a_star = AStar(start, goal)
-                        path = a_star.find_path()
-                        if path:
-                            robot_paths[i] = deque(path[1:])  # skip current position
-                            robot_deliveries[i] = goal
-                            robot_states[i] = RobotState.DELIVERING
-                            rospy.loginfo(f"Robot {i} path: {list(robot_paths[i])}")
-                        else:
-                            rospy.logwarn(f"Robot {i} has no path to ({delivery_x}, {delivery_y})")
-                except rospy.ServiceException:
-                    pass
-
-            elif robot_states[i] == RobotState.DELIVERING:
-                move_robot(i, update_pos, update_grid, set_model_state)
-                if not robot_paths[i]:
-                    delivery_x, delivery_y = robot_deliveries[i]
-                    current_x, current_y = robot_locations[i]
-                    if (current_x, current_y) == (delivery_x, delivery_y):
-                        rospy.loginfo(f"Robot {i} delivered to ({delivery_x}, {delivery_y})")
-                        robot_states[i] = RobotState.GOING_HOME
-                        a_star = AStar((current_x, current_y), (8, 8))
-                        path = a_star.find_path()
-                        robot_paths[i] = deque(path[1:] if path else [])
-                    else:
-                        rospy.logwarn(f"Robot {i} failed to reach ({delivery_x}, {delivery_y})")
-
-            elif robot_states[i] == RobotState.GOING_HOME:
-                move_robot(i, update_pos, update_grid, set_model_state)
-                if not robot_paths[i]:
-                    robot_states[i] = RobotState.QUEUING
-
+            handler = state_handlers.get(robot_states[i])
+            if handler:
+                handler(i)
         rate.sleep()
+    
+    """
+    # Test-only: assign fake path up up up, left left left
+    for i in range(1, NUM_ROBOTS + 1):
+        x, y = robot_locations[i]
+        path = [(x-1, y), (x-2, y), (x-3, y), (x-3, y-1), (x-3, y-2), (x-3, y-3)]
+        robot_paths[i] = deque(path)
+        robot_states[i] = RobotState.DELIVERING
+
+    while not rospy.is_shutdown():
+        for i in range(1, NUM_ROBOTS + 1):
+            move_robot(i, update_pos, update_grid, set_model_state)
+        rate.sleep()
+     """
+
 
 if __name__ == '__main__':
     try:

@@ -1,13 +1,15 @@
-
+from world import TileType
 
 class AStar:
-    def __init__(self, start, goal):
+    def __init__(self, start, goal, world):
         self.start = start
         self.goal = goal
+        self.world = world
         self.open_set = set()
         self.closed_set = set()
         self.g_score = {}
         self.f_score = {}
+        self.came_from = {}
 
     def heuristic(self, a, b):
         return abs(a[0] - b[0]) + abs(a[1] - b[1])
@@ -29,26 +31,35 @@ class AStar:
                 if neighbor in self.closed_set:
                     continue
 
-                tentative_g_score = self.g_score[current] + 1  # Assuming uniform cost for neighbors
+                tentative_g_score = self.g_score[current] + 1
 
                 if neighbor not in self.open_set:
                     self.open_set.add(neighbor)
                 elif tentative_g_score >= self.g_score.get(neighbor, float('inf')):
                     continue
 
-                # This path is the best until now
+                self.came_from[neighbor] = current
                 self.g_score[neighbor] = tentative_g_score
                 self.f_score[neighbor] = tentative_g_score + self.heuristic(neighbor, self.goal)
 
-        return None  # No path found
+        return None
 
     def reconstruct_path(self, current):
         path = [current]
-        while current in self.g_score:
-            current = min(self.g_score.keys(), key=lambda x: self.g_score[x])
+        while current in self.came_from:
+            current = self.came_from[current]
             path.append(current)
         return path[::-1]
 
     def get_neighbors(self, node):
-        # Placeholder for neighbor generation logic
-        return []  # Should return actual neighbors based on the grid or graph structure
+        row, col = node
+
+        neighbors = []
+        for d_row, d_col in [(-1, 0), (1, 0), (0, -1), (0, 1)]:
+            n_row, n_col = row + d_row, col + d_col
+            if self.world.in_bounds(n_row, n_col):
+                tile = self.world.get_tile(n_row, n_col)
+                if tile in [TileType.UNVISITED, TileType.VISITED]:
+                    neighbors.append((n_row, n_col))
+
+        return neighbors
