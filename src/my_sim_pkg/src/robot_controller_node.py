@@ -68,18 +68,25 @@ class RobotController:
             grid_y = int(round(y / self.GRID_SIZE))
             self.robot_positions[bot_id] = (grid_x, grid_y)
 
-    def teleport_robot(self, bot_id, x, y):
-        try:
-            req = SetModelStateRequest()
-            req.model_state.model_name = f"turtlebot3_burger_{bot_id}"
-            req.model_state.pose.position.x = x
-            req.model_state.pose.position.y = y
-            req.model_state.pose.position.z = 0.1
-            req.model_state.pose.orientation.w = 1.0
-            self.set_model_state(req)
-            rospy.loginfo(f"ROBOT_CONTROLLER::Teleported robot {bot_id} to ({x}, {y})")
-        except Exception as e:
-            rospy.logwarn(f"ROBOT_CONTROLLER::Teleport failed: {e}")
+    def teleport_robot(self, bot_id, x, y, steps=10, delay=0.05):
+        current_x, current_y = self.robot_locations.get(bot_id, (x, y))
+        for i in range(1, steps + 1):
+            interp_x = current_x + (x - current_x) * (i / steps)
+            interp_y = current_y + (y - current_y) * (i / steps)
+            try:
+                req = SetModelStateRequest()
+                req.model_state.model_name = f"turtlebot3_burger_{bot_id}"
+                req.model_state.pose.position.x = interp_x
+                req.model_state.pose.position.y = interp_y
+                req.model_state.pose.position.z = 0.1
+                req.model_state.pose.orientation.w = 1.0
+                self.set_model_state(req)
+            except Exception as e:
+                rospy.logwarn(f"ROBOT CONTROLLER::Smooth teleport failed: {e}")
+                break
+            rospy.sleep(delay)
+        rospy.loginfo(f"ROBOT CONTROLLER::Smoothly moved robot {bot_id} to ({x}, {y})")
+
 
     def world_callback(self, msg):
         data = msg.data
@@ -118,7 +125,7 @@ class RobotController:
 
         direction = self.directions.get((dx, dy), None)
         if direction is None:
-            rospy.logwarn(f"Invalid move direction from ({current_x},{current_y}) to ({next_x},{next_y})")
+            rospy.logwarn(f"ROBOT CONTROLLER::Invalid move direction from ({current_x},{current_y}) to ({next_x},{next_y})")
             return
 
         try:
@@ -134,7 +141,7 @@ class RobotController:
                 self.robot_locations[bot_id] = (next_x, next_y)
 
                 if bot_id in self.robot_goals and (next_x, next_y) == self.robot_goals[bot_id]:
-                    rospy.loginfo(f"ROBOT_CONTROLLER::Robot {bot_id} reached its goal at {self.robot_goals[bot_id]}")
+                    rospy.loginfo(f"ROBOT CONTROLLER::Robot {bot_id} reached its goal at {self.robot_goals[bot_id]}")
                     if self.robot_states[bot_id] == RobotState.DELIVERING:
                         home_goal = Settings.robot_positions[bot_id]
                         a_star = AStar((next_x, next_y), home_goal, self.latest_world)
@@ -143,14 +150,14 @@ class RobotController:
                         self.robot_goals[bot_id] = home_goal
                         self.robot_states[bot_id] = RobotState.GOING_HOME
                     elif self.robot_states[bot_id] == RobotState.GOING_HOME:
-                        rospy.loginfo(f"ROBOT_CONTROLLER::Robot {bot_id} returned home")
+                        rospy.loginfo(f"ROBOT CONTROLLER::Robot {bot_id} returned home")
                         self.robot_states[bot_id] = RobotState.QUEUING
                         self.robot_goals.pop(bot_id, None)
             else:
-                rospy.loginfo(f"ROBOT_CONTROLLER::Robot {bot_id} blocked at ({next_x},{next_y})")
+                rospy.loginfo(f"ROBOT CONTROLLER::Robot {bot_id} blocked at ({next_x},{next_y})")
                 self.robot_paths[bot_id].clear()
         except rospy.ServiceException:
-            rospy.logerr("ROBOT_CONTROLLER::Failed to call update_current_bot_position")
+            rospy.logerr("ROBOT CONTROLLER::Failed to call update_current_bot_position")
 
     def handle_queuing(self, bot_id):
         try:
