@@ -39,8 +39,8 @@ class GridManager:
             name = f"house_{i}"
             try:
                 res = get_model(name, "world")
-                y = int(res.pose.position.x // GRID_SIZE)  # flip x <-> y
-                x = int(res.pose.position.y // GRID_SIZE)
+                x = int(res.pose.position.x // GRID_SIZE)  
+                y = int(res.pose.position.y // GRID_SIZE)
                 self.world.set_tile(x, y, TileType.HOUSE)
                 self.world.houses.append((x, y))
                 rospy.loginfo(f"GRID MANAGER:: House {i} is at ({x}, {y})")
