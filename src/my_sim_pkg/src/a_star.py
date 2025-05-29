@@ -11,6 +11,7 @@ class AStar:
         self.f_score = {}
         self.came_from = {}
         
+        
     # Manhattan distance heuristic
     def heuristic(self, a, b):
         return abs(a[0] - b[0]) + abs(a[1] - b[1])

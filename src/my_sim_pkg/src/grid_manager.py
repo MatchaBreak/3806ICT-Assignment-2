@@ -19,7 +19,6 @@ NUM_HOUSES = Settings.NUM_HOUSES
 class GridManager:
     def __init__(self):
         self.world = World()
-        #self.robot_objects = {}
 
         self.populate_houses()
         self.populate_robots()
@@ -89,7 +88,7 @@ class GridManager:
             self.world.robots[req.botID] = (new_x, new_y)
             #if req.botID in self.robot_objects:
                 #self.robot_objects[req.botID].currentLocation = (new_x, new_y)
-            rospy.loginfo(f"GRID MANAGER::Bot {req.botID} moved to ({new_x}, {new_y})")
+            #rospy.loginfo(f"GRID MANAGER::Bot {req.botID} moved to ({new_x}, {new_y})")
             self.world.dump_to_file(f"move_bot_{req.botID}.txt")
             return UpdateCurrentBotPositionResponse(success=True)
         else:

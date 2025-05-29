@@ -1,0 +1,287 @@
+#Stefan: will integrate tomorrow
+from copy import deepcopy
+
+import rospy
+import random
+from my_sim_pkg.srv import (
+    GetHouseLocations,
+    ListenToQueue,
+    SignalOrderReady,
+    ListenForOrderTaken,
+    SignalOrderReadyRequest
+)
+
+# Tennille
+from networkx import DiGraph, from_numpy_array, relabel_nodes, set_node_attributes
+from numpy import array
+from vrpy import VehicleRoutingProblem
+
+# Not all orders are important
+class GrandDispatch:
+    def __init__(self):
+        self.high_priority_queue = []
+        self.mid_priority_queue = []
+        self.low_priority_queue = []
+
+    def add_to_high_priority_queue(self, order):
+        order_and_age = [order, 0]
+        self.high_priority_queue.append(order_and_age)
+
+    def add_to_mid_priority_queue(self, order):
+        order_and_age = [order, 0]
+        self.mid_priority_queue.append(order_and_age)
+
+    def add_to_low_priority_queue(self, order):
+        order_and_age = [order, 0]
+        self.low_priority_queue.append(order_and_age)
+
+    # Decide which orders move on
+    def think_and_get_next_order(self):
+        return_order = []
+        # Return whatever is at the front of the queue
+        if len(self.high_priority_queue) != 0:
+            return_order = self.high_priority_queue.pop(0)
+        elif len(self.mid_priority_queue) != 0 and len(self.high_priority_queue) == 0:
+            return_order = self.mid_priority_queue.pop(0)
+        elif len(self.low_priority_queue) != 0 and len(self.mid_priority_queue) == 0:
+            return_order = self.low_priority_queue.pop(0)
+
+        # Increment lower queue ages/Age up
+        for i in range(len(self.mid_priority_queue)):
+            self.mid_priority_queue[i][1] += 1
+
+        for i in range(len(self.low_priority_queue)):
+            self.low_priority_queue[i][1] += 1
+
+        # If old enough, move to higher priority
+        for i in range (len(self.mid_priority_queue)):
+            if self.mid_priority_queue[i][1] > 4:
+                self.high_priority_queue.append(self.mid_priority_queue.pop(i))
+
+        for i in range (len(self.low_priority_queue)):
+            if self.low_priority_queue[i][1] > 4:
+                self.mid_priority_queue.append(self.low_priority_queue.pop(i))
+
+        # Grab a delivery address/order, returns None if no orders in any queue
+        if len(return_order) != 0:
+            return return_order[0]
+
+
+def manhattan_distance(point_a, point_b):
+    return abs(point_a[0] - point_b[0]) + abs(point_a[1] - point_b[1])
+
+# Tennille
+def create_distance_matrix(locations):
+    """
+    Creates a distance matrix with a specific structure for VRP solvers expecting explicit source and sink nodes.
+    - Index 0: Source (Depot)
+    - Indices 1 to N: Customers (locations[1] to locations[N])
+    - Index N+1: Sink (Depot)
+    Uses Manhattan distance
+    """
+
+    def _manhattan_distance(p1, p2):
+        return abs(p1[0] - p2[0]) + abs(p1[1] - p2[1])
+
+    if not locations:
+        return []
+
+    depot_loc = locations[0]  # locations[0] is depot, rest are customers
+    customer_locs = locations[1:]
+    n_customers = len(customer_locs)
+
+    # Matrix size: 1 for source, n_customers, 1 for sink
+    # The source and the sink are conceptual nodes.
+    # The source is the start and the sink is the end. In this case they are the same place.
+    matrix_size = n_customers + 2
+
+    # Initialise matrix with zeros. The sink row and parts of other rows will remain zero.
+    dist_matrix = [[0] * matrix_size for _ in range(matrix_size)]
+
+    # Row 0: From Source (Depot)
+    # dist_matrix[0][0] is Source to Source (already 0)
+    # Distances from Source (Depot) to Customers
+    for j in range(n_customers):
+        # Customer j maps to matrix column j+1
+        customer_matrix_idx = j + 1
+        dist_matrix[0][customer_matrix_idx] = _manhattan_distance(depot_loc, customer_locs[j])
+    # dist_matrix[0][matrix_size - 1] is source to sink (already 0, as Sink is co-located with depot)
+
+    # Rows 1 to n_customers: From Customers
+    # These rows correspond to customer_locs[0] through customer_locs[n_customers-1]
+    for i in range(n_customers):
+        current_customer_loc = customer_locs[i]
+        # Customer i maps to matrix row i+1
+        matrix_row_idx_for_current_customer = i + 1
+
+        # dist_matrix[matrix_row_idx_for_current_customer][0] is Customer to Source (remains 0 as per target structure)
+
+        # Distances from Current Customer to Other Customers
+        for j in range(n_customers):
+            other_customer_loc = customer_locs[j]
+            # Other customer j maps to matrix column j+1
+            matrix_col_idx_for_other_customer = j + 1
+
+            dist_matrix[matrix_row_idx_for_current_customer][matrix_col_idx_for_other_customer] = _manhattan_distance(
+                current_customer_loc, other_customer_loc)
+
+        # Distance from Current Customer to Sink (Depot)
+        sink_matrix_idx = matrix_size - 1
+        dist_matrix[matrix_row_idx_for_current_customer][sink_matrix_idx] = _manhattan_distance(current_customer_loc,
+                                                                                                depot_loc)
+
+    # Row (matrix_size - 1): From Sink (already all zeros from initialisation so don't need to do it again)
+
+    return dist_matrix
+
+def dispatcher():
+    rospy.init_node("dispatcher")
+    rospy.loginfo("Dispatcher started.")
+
+    # Wait for services to be available
+    rospy.wait_for_service("/get_house_locations")
+    rospy.wait_for_service("/listen_to_queue")
+    rospy.wait_for_service("/signal_order_ready")
+    rospy.wait_for_service("/listen_for_order_taken")
+
+    get_houses = rospy.ServiceProxy("/get_house_locations", GetHouseLocations)
+    listen_queue = rospy.ServiceProxy("/listen_to_queue", ListenToQueue)
+    signal_ready = rospy.ServiceProxy("/signal_order_ready", SignalOrderReady)
+    listen_taken = rospy.ServiceProxy("/listen_for_order_taken", ListenForOrderTaken)
+
+    # Step 1: Get all house positions
+    rospy.loginfo("DISPATCHER: requesting house locations")
+    try:
+        house_response = get_houses()
+    except rospy.ServiceException:
+        rospy.logerr("DISPATCHER: failed to call /get_house_locations")
+        return
+
+    houses = []
+    data = house_response.locations.data
+    ############################# Addition, the first part is now the house number/address (like house 1 or something)
+    for i in range(0, len(data) - 1, 2):
+        houses.append((i+1, data[i], data[i + 1]))
+
+    if not houses:
+        rospy.logwarn("DISPATCHER: no house locations found")
+        return
+
+    rospy.loginfo("DISPATCHER: initialised with %d house(s)", len(houses))
+    for idx, house in enumerate(houses, 1):
+        rospy.loginfo("DISPATCHER: House %d is located at (%d, %d)", idx, house[0], house[1])
+
+    rate = rospy.Rate(1)  # Slow down loop for readability
+
+    # #########################################################################################For vrpy
+    # Precalculate an initial demand for each house, we can change them later dynamically
+    demand_each_house = {}
+    for i in range(len(houses)):
+        pizzas_wanted = random.randrange(1, 10)
+        demand_each_house.update({i: pizzas_wanted})
+
+    # First or, 0, is the base
+    # TODO: Replace base position with values from config
+    building_positions = [(8, 8)]
+
+    # This is just for the graph stuff
+    for i in range(len(houses)):
+        house_position = deepcopy([houses[i][1], houses[i][2]])
+        building_positions.append(house_position)
+
+    while not rospy.is_shutdown():
+        try:
+            queue_response = listen_queue()
+        except rospy.ServiceException:
+            rospy.logerr("DISPATCHER: failed to call /listen_to_queue")
+            rate.sleep()
+            continue
+
+        bot_id = queue_response.nextInQueue
+        if bot_id < 0:
+            rospy.loginfo("DISPATCHER: No robots in queue.")
+            rospy.sleep(2)
+            continue
+
+        rospy.loginfo("DISPATCHER: Robot %d is next in queue", bot_id)
+
+        #################################################################### VRPY
+        # Distance matrix
+        distance_matrix = create_distance_matrix(building_positions)
+
+        # Create a graph and store the attributes
+
+        # The matrix is transformed into a DiGraph
+        # The matrix is transformed into a DiGraph
+        A = array(distance_matrix, dtype=[("cost", int)])
+        G = from_numpy_array(A, create_using=DiGraph())
+
+        # The demands are stored as node attributes
+        set_node_attributes(G, values=demand_each_house, name="demand")
+
+        # The depot is relabeled as Source and Sink
+        G = relabel_nodes(G, {0: "Source", len(building_positions): "Sink"})
+
+        # Once the graph is properly defined, creating a CVRP and solving it is straightforward. With
+        # a maximum load of 15 units per vehicle:
+        prob = VehicleRoutingProblem(G, load_capacity=15)
+        prob.num_stops = 4 # 2 houses visited
+        prob.solve()
+
+        # I can assign this to a list and pop them off slowly maybe, then regenerate with new words and stuff when
+        # needed
+        #
+        #
+        #
+        #
+        #
+        #
+        #
+        # We haven't decided how to handle this smart output yet.
+        #
+        #
+        #
+        # We can probably regenerate this by refilling out the demand_each_house
+        #
+        #
+        #
+        best_routes = prob.best_routes
+
+        rospy.loginfo("DISPATCHER: best routes: %s", best_routes)
+
+        ##########################################################################################
+        house = random.choice(houses)
+        #rospy.loginfo("DISPATCHER: assigning delivery to house at (%d, %d)", *house)
+
+        # Signal order readiness
+        order_ready = SignalOrderReadyRequest()
+        order_ready.botId = bot_id
+        order_ready.deliveryLocationX = house[1]
+        order_ready.deliveryLocationY = house[2]
+
+        while not rospy.is_shutdown():
+            try:
+                ready_response = signal_ready(order_ready)
+                if ready_response.success:
+                    rospy.loginfo("DISPATCHER: robot %d notified successfully", bot_id)
+                    break
+                else:
+                    rospy.loginfo("DISPATCHER: waiting for previous robot to pick up order")
+            except rospy.ServiceException:
+                rospy.logerr("DISPATCHER: failed to call /signal_order_ready")
+            rospy.sleep(2)
+
+        # Wait for order to be picked up
+        try:
+            listen_taken()
+            rospy.loginfo("DISPATCHER: robot %d has taken the order", bot_id)
+        except rospy.ServiceException:
+            rospy.logwarn("DISPATCHER: failed to confirm order taken")
+
+        rate.sleep()
+
+if __name__ == "__main__":
+    try:
+        dispatcher()
+    except rospy.ROSInterruptException:
+        pass
