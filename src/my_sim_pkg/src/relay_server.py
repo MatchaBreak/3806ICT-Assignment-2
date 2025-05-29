@@ -37,27 +37,24 @@ def handle_listen_to_queue(req):
 
 
 def handle_signal_order_ready(req):
-    global signal_order_ready, delivery_location
-    if signal_order_ready >= 0:
-        return SignalOrderReadyResponse(success=False)
-    signal_order_ready = req.botID
-    delivery_location = (req.deliveryLocationX, req.deliveryLocationY)
-    rospy.loginfo(f"RELAY_SERVER::Order ready for robot {req.botID} at {delivery_location}")
+    available_orders.append((req.deliveryLocationX, req.deliveryLocationY))
+    rospy.loginfo(f"RELAY_SERVER::Order added at ({req.deliveryLocationX}, {req.deliveryLocationY})")
     return SignalOrderReadyResponse(success=True)
 
 
+
 def handle_listen_to_order_status(req):
-    global order_taken
-    if signal_order_ready == req.botId:
-        order_taken = True
-        rospy.loginfo(f"RELAY_SERVER::Robot {req.botId} took the order to {delivery_location}")
+    if available_orders:
+        delivery = available_orders.popleft()
+        rospy.loginfo(f"RELAY_SERVER::Robot {req.botId} took the order to {delivery}")
         return ListenToOrderStatusResponse(
             orderTaken=True,
-            deliveryLocationX=delivery_location[0],
-            deliveryLocationY=delivery_location[1]
+            deliveryLocationX=delivery[0],
+            deliveryLocationY=delivery[1]
         )
-    rospy.loginfo(f"RELAY_SERVER::Robot {req.botId} failed to take order {signal_order_ready}")
+    rospy.loginfo(f"RELAY_SERVER::Robot {req.botId} found no available orders")
     return ListenToOrderStatusResponse(orderTaken=False)
+
 
 
 def handle_listen_for_order_taken(req):
