@@ -13,9 +13,10 @@ from my_sim_pkg.srv import (
 from a_star import AStar
 from collections import deque
 from threading import Lock
+from world import Settings
 
-NUM_ROBOTS = rospy.get_param('NUM_ROBOTS', 4)
-GRID_SIZE = rospy.get_param('GRID_SIZE', 1)
+NUM_ROBOTS = Settings.NUM_ROBOTS
+GRID_SIZE = Settings.GRID_SIZE
 
 directions = {
     (0, -1): "moveLeft",

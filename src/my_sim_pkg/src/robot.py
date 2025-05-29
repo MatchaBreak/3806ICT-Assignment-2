@@ -1,6 +1,5 @@
 from collections import deque
 from enum import Enum
-from my_sim_pkg.config import shared_settings as settings
 
 
 class RobotState(Enum):
