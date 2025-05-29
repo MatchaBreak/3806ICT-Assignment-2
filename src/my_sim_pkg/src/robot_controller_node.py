@@ -30,6 +30,7 @@ robot_states = {}
 robot_paths = {}
 robot_locations = {}
 robot_deliveries = {}
+robot_goals = {}
 lock = Lock()
 
 class RobotState:
@@ -59,8 +60,17 @@ def teleport_robot(bot_id, x, y, client):
     except Exception as e:
         rospy.logwarn(f"ROBOT_CONTROLLER::Teleport failed: {e}")
 
-def move_robot(bot_id, update_pos_client, update_grid_client, set_model_client):
+
+def move_robot(bot_id, update_pos_client, update_grid_client, set_model_client, world):
     if not robot_paths[bot_id]:
+        if robot_states[bot_id] == RobotState.DELIVERING and bot_id not in robot_goals:
+            home_goal = Settings.robot_positions[bot_id]
+            current_x, current_y = robot_locations[bot_id]
+            a_star = AStar((current_x, current_y), home_goal, world)
+            path = a_star.find_path()
+            robot_paths[bot_id] = deque(path[1:] if path else [])
+            robot_goals[bot_id] = home_goal
+            robot_states[bot_id] = RobotState.GOING_HOME
         return
 
     current_x, current_y = robot_locations[bot_id]
@@ -83,12 +93,28 @@ def move_robot(bot_id, update_pos_client, update_grid_client, set_model_client):
         if response.success:
             teleport_robot(bot_id, next_x, next_y, set_model_client)
             robot_locations[bot_id] = (next_x, next_y)
+
+            if bot_id in robot_goals and (next_x, next_y) == robot_goals[bot_id]:
+                rospy.loginfo(f"ROBOT_CONTROLLER::Robot {bot_id} reached its goal at {robot_goals[bot_id]}")
+                if robot_states[bot_id] == RobotState.DELIVERING:
+                    home_goal = Settings.robot_positions[bot_id]
+                    a_star = AStar((next_x, next_y), home_goal, world)
+                    path = a_star.find_path()
+                    robot_paths[bot_id] = deque(path[1:] if path else [])
+                    robot_goals[bot_id] = home_goal
+                    robot_states[bot_id] = RobotState.GOING_HOME
+                elif robot_states[bot_id] == RobotState.GOING_HOME:
+                    rospy.loginfo(f"ROBOT_CONTROLLER::Robot {bot_id} returned home to {robot_goals[bot_id]}")
+                    robot_states[bot_id] = RobotState.QUEUING
+                    robot_goals.pop(bot_id, None)
+
         else:
             rospy.loginfo(f"ROBOT_CONTROLLER::Robot {bot_id} blocked at ({next_x},{next_y})")
             robot_paths[bot_id].clear()
 
     except rospy.ServiceException:
         rospy.logerr("ROBOT_CONTROLLER::Failed to call update_current_bot_position")
+
 
 def controller_main():
     rospy.init_node('robot_controller_node')
@@ -139,6 +165,7 @@ def controller_main():
                 if path:
                     robot_paths[i] = deque(path[1:])
                     robot_deliveries[i] = goal
+                    robot_goals[i] = goal
                     robot_states[i] = RobotState.DELIVERING
                     rospy.loginfo(f"ROBOT CONTROLLER::Robot {i} path: {list(robot_paths[i])}")
                 else:
@@ -147,7 +174,7 @@ def controller_main():
             pass
 
     def handle_delivering(i):
-        move_robot(i, update_pos, update_grid, set_model_state)
+        move_robot(i, update_pos, update_grid, set_model_state, world)
         if not robot_paths[i]:
             delivery_x, delivery_y = robot_deliveries[i]
             current_x, current_y = robot_locations[i]
@@ -161,7 +188,7 @@ def controller_main():
                 rospy.logwarn(f"ROBOT CONTROLLER::Robot {i} failed to reach ({delivery_x}, {delivery_y})")
 
     def handle_going_home(i):
-        move_robot(i, update_pos, update_grid, set_model_state)
+        move_robot(i, update_pos, update_grid, set_model_state, world)
         if not robot_paths[i]:
             robot_states[i] = RobotState.QUEUING
 

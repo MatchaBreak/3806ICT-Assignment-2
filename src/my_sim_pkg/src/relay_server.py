@@ -16,7 +16,7 @@ robot_queue = deque()
 signal_order_ready = -1
 delivery_location = (0, 0)
 order_taken = False
-
+available_orders = deque()
 
 def handle_signal_queued_up(req):
     if req.botID in robot_queue:

@@ -72,7 +72,13 @@ class GridManager:
         new_x = curr_x + dx
         new_y = curr_y + dy
 
-        if self.world.in_bounds(new_x, new_y) and self.world.get_tile(new_x, new_y) in [TileType.UNVISITED, TileType.VISITED]:
+        if self.world.in_bounds(new_x, new_y) and self.world.get_tile(new_x, new_y) in [TileType.UNVISITED, 
+                                                                                        TileType.VISITED, 
+                                                                                        TileType.HOUSE,
+                                                                                        TileType.ROBOT_1,
+                                                                                        TileType.ROBOT_2,
+                                                                                        TileType.ROBOT_3,
+                                                                                        TileType.ROBOT_4]:
             self.world.set_tile(curr_x, curr_y, TileType.VISITED)
             tile_type = getattr(TileType, f"ROBOT_{req.botID}")
             self.world.set_tile(new_x, new_y, tile_type)
