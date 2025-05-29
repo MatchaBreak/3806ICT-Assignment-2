@@ -52,15 +52,21 @@ class AStar:
             path.append(current)
         return path[::-1]
 
+    # Allows for delivering to other bots (in theory)
     def get_neighbors(self, node):
         row, col = node
-
         neighbors = []
+
         for d_row, d_col in [(-1, 0), (1, 0), (0, -1), (0, 1)]:
             n_row, n_col = row + d_row, col + d_col
             if self.world.in_bounds(n_row, n_col):
                 tile = self.world.get_tile(n_row, n_col)
-                if tile in [TileType.UNVISITED, TileType.VISITED]:
+                if tile in [TileType.UNVISITED, TileType.VISITED, TileType.HOUSE]:
                     neighbors.append((n_row, n_col))
+                elif tile in [TileType.ROBOT_1, TileType.ROBOT_2, TileType.ROBOT_3, TileType.ROBOT_4]:
+                    # Allow moving into robot-tile only if it's the goal (e.g., for rendezvous)
+                    if (n_row, n_col) == self.goal:
+                        neighbors.append((n_row, n_col))
 
         return neighbors
+

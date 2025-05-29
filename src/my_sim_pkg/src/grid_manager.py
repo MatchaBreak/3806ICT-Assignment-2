@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 import rospy
 from std_msgs.msg import Int32MultiArray
 from gazebo_msgs.srv import GetModelState
@@ -25,11 +24,14 @@ class GridManager:
         self.populate_houses()
         self.populate_robots()
 
+        self.grid_pub = rospy.Publisher('/world_grid', Int32MultiArray, queue_size=10)
+        rospy.Timer(rospy.Duration(1.0), self.publish_grid)
+
         rospy.Service('/update_current_bot_position', UpdateCurrentBotPosition, self.update_position)
         rospy.Service('/get_house_locations', GetHouseLocations, self.get_house_locations)
 
         rospy.loginfo("GRID MANAGER::Grid Manager ready.")
-        self.world.dump_to_file()  
+        self.world.dump_to_file()
 
     def populate_houses(self):
         rospy.wait_for_service('/gazebo/get_model_state')
@@ -39,7 +41,7 @@ class GridManager:
             name = f"house_{i}"
             try:
                 res = get_model(name, "world")
-                x = int(res.pose.position.x // GRID_SIZE)  # flip x <-> y
+                x = int(res.pose.position.x // GRID_SIZE)
                 y = int(res.pose.position.y // GRID_SIZE)
                 self.world.set_tile(x, y, TileType.HOUSE)
                 self.world.houses.append((x, y))
@@ -72,13 +74,15 @@ class GridManager:
         new_x = curr_x + dx
         new_y = curr_y + dy
 
-        if self.world.in_bounds(new_x, new_y) and self.world.get_tile(new_x, new_y) in [TileType.UNVISITED, 
-                                                                                        TileType.VISITED, 
-                                                                                        TileType.HOUSE,
-                                                                                        TileType.ROBOT_1,
-                                                                                        TileType.ROBOT_2,
-                                                                                        TileType.ROBOT_3,
-                                                                                        TileType.ROBOT_4]:
+        if self.world.in_bounds(new_x, new_y) and self.world.get_tile(new_x, new_y) in [
+            TileType.UNVISITED,
+            TileType.VISITED,
+            TileType.HOUSE,
+            TileType.ROBOT_1,
+            TileType.ROBOT_2,
+            TileType.ROBOT_3,
+            TileType.ROBOT_4,
+        ]:
             self.world.set_tile(curr_x, curr_y, TileType.VISITED)
             tile_type = getattr(TileType, f"ROBOT_{req.botID}")
             self.world.set_tile(new_x, new_y, tile_type)
@@ -92,6 +96,10 @@ class GridManager:
             rospy.logwarn(f"GRID MANAGER::Bot {req.botID} failed to move to ({new_x}, {new_y}) - cell occupied or out of bounds.")
             return UpdateCurrentBotPositionResponse(success=False)
 
+    def publish_grid(self, event):
+        flat_grid = [cell for row in self.world.grid for cell in row]
+        msg = Int32MultiArray(data=flat_grid)
+        self.grid_pub.publish(msg)
 
     def get_house_locations(self, req):
         flat = [coord for (x, y) in self.world.houses for coord in (x, y)]
