@@ -19,7 +19,7 @@ NUM_HOUSES = Settings.NUM_HOUSES
 class GridManager:
     def __init__(self):
         self.world = World()
-        self.robot_objects = {}
+        #self.robot_objects = {}
 
         self.populate_houses()
         self.populate_robots()
@@ -62,8 +62,8 @@ class GridManager:
                 tile_type = getattr(TileType, f"ROBOT_{i+1}")
                 self.world.set_tile(x, y, tile_type)
                 self.world.robots[i + 1] = (x, y)
-                self.robot_objects[i + 1] = Robot(robot_id=i + 1, node_handle=None, pat_helper=None)
-                self.robot_objects[i + 1].currentLocation = (x, y)
+                #self.robot_objects[i + 1] = Robot(robot_id=i + 1, node_handle=None, pat_helper=None)
+                #self.robot_objects[i + 1].currentLocation = (x, y)
                 rospy.loginfo(f"GRID MANAGER::Robot {i+1} initialized at ({x}, {y})")
             except rospy.ServiceException as e:
                 rospy.logerr(f"GRID MANAGER::Failed to get model state for {name}: {e}")
@@ -87,8 +87,8 @@ class GridManager:
             tile_type = getattr(TileType, f"ROBOT_{req.botID}")
             self.world.set_tile(new_x, new_y, tile_type)
             self.world.robots[req.botID] = (new_x, new_y)
-            if req.botID in self.robot_objects:
-                self.robot_objects[req.botID].currentLocation = (new_x, new_y)
+            #if req.botID in self.robot_objects:
+                #self.robot_objects[req.botID].currentLocation = (new_x, new_y)
             rospy.loginfo(f"GRID MANAGER::Bot {req.botID} moved to ({new_x}, {new_y})")
             self.world.dump_to_file(f"move_bot_{req.botID}.txt")
             return UpdateCurrentBotPositionResponse(success=True)
