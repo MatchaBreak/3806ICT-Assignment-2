@@ -42,7 +42,6 @@ roslaunch my_sim_pkg spawn_robots.launch
 #to launch the robot controll system 
 roslaunch my_sim_pkg robot_system.launch
 
-stefan's path: ss << "/opt/mono/MONO-PAT-v3.6.0/PAT3.exe";
 
 # To check each robot's odometry
 rostopic echo /turtlebot3_burger_1/odom

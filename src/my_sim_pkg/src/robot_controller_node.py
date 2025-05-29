@@ -50,8 +50,8 @@ def teleport_robot(bot_id, x, y, client):
     try:
         req = SetModelStateRequest()
         req.model_state.model_name = f"turtlebot3_burger_{bot_id}"
-        req.model_state.pose.position.x = y
-        req.model_state.pose.position.y = x
+        req.model_state.pose.position.x = x
+        req.model_state.pose.position.y = y
         req.model_state.pose.position.z = 0.1
         req.model_state.pose.orientation.w = 1.0
         client(req)
@@ -113,8 +113,10 @@ def controller_main():
         if len(robot_positions) == NUM_ROBOTS:
             for i in range(1, NUM_ROBOTS + 1):
                 robot_locations[i] = robot_positions[i]
-                rospy.loginfo(f"Robot {i} initialised at {robot_locations[i]}")
+                rospy.loginfo(f"ROBOT CONTROLLER::Robot {i} initialised at {robot_locations[i]}")
             break
+        else:
+            rospy.loginfo("ROBOT CONTROLLER::discrepancy in provided robot positions and declared NUM_ROBOTS")
         rate.sleep()
 
     def handle_queuing(i):
@@ -138,9 +140,9 @@ def controller_main():
                     robot_paths[i] = deque(path[1:])
                     robot_deliveries[i] = goal
                     robot_states[i] = RobotState.DELIVERING
-                    rospy.loginfo(f"Robot {i} path: {list(robot_paths[i])}")
+                    rospy.loginfo(f"ROBOT CONTROLLER::Robot {i} path: {list(robot_paths[i])}")
                 else:
-                    rospy.logwarn(f"Robot {i} has no path to ({delivery_x}, {delivery_y})")
+                    rospy.logwarn(f"ROBOT CONTROLLER::Robot {i} has no path to ({delivery_x}, {delivery_y})")
         except rospy.ServiceException:
             pass
 
@@ -150,13 +152,13 @@ def controller_main():
             delivery_x, delivery_y = robot_deliveries[i]
             current_x, current_y = robot_locations[i]
             if (current_x, current_y) == (delivery_x, delivery_y):
-                rospy.loginfo(f"Robot {i} delivered to ({delivery_x}, {delivery_y})")
+                rospy.loginfo(f"ROBOT CONTROLLER::Robot {i} delivered to ({delivery_x}, {delivery_y})")
                 a_star = AStar((current_x, current_y), Settings.robot_positions[i], world)
                 path = a_star.find_path()
                 robot_paths[i] = deque(path[1:] if path else [])
                 robot_states[i] = RobotState.GOING_HOME
             else:
-                rospy.logwarn(f"Robot {i} failed to reach ({delivery_x}, {delivery_y})")
+                rospy.logwarn(f"ROBOT CONTROLLER::Robot {i} failed to reach ({delivery_x}, {delivery_y})")
 
     def handle_going_home(i):
         move_robot(i, update_pos, update_grid, set_model_state)

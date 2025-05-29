@@ -53,11 +53,11 @@ class World:
 
     def set_tile(self, x, y, value):
         if 0 <= x < self.width and 0 <= y < self.height:
-            self.grid[y][x] = value
+            self.grid[x][y] = value
 
     def get_tile(self, x, y):
         if 0 <= x < self.width and 0 <= y < self.height:
-            return self.grid[y][x]
+            return self.grid[x][y]
         return TileType.NONEXIST
 
     def in_bounds(self, x, y):
