@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 import rospy
 from my_sim_pkg.srv import (
     SignalQueuedUp, SignalQueuedUpResponse,
@@ -37,8 +36,10 @@ def handle_listen_to_queue(req):
 
 
 def handle_signal_order_ready(req):
-    available_orders.append((req.deliveryLocationX, req.deliveryLocationY))
-    rospy.loginfo(f"RELAY_SERVER::Order added at ({req.deliveryLocationX}, {req.deliveryLocationY})")
+    #available_orders.append((req.deliveryLocationX, req.deliveryLocationY))
+    available_orders.append(req.deliveryLocations)
+    #rospy.loginfo(f"RELAY_SERVER::Order added at ({req.deliveryLocationX}, {req.deliveryLocationY})")
+    rospy.loginfo(f"RELAY_SERVER::Orders list added {req.deliveryLocations}")
     return SignalOrderReadyResponse(success=True)
 
 
@@ -49,13 +50,10 @@ def handle_listen_to_order_status(req):
         rospy.loginfo(f"RELAY_SERVER::Robot {req.botId} took the order to {delivery}")
         return ListenToOrderStatusResponse(
             orderTaken=True,
-            deliveryLocationX=delivery[0],
-            deliveryLocationY=delivery[1]
+            deliveryLocations=delivery
         )
     rospy.loginfo(f"RELAY_SERVER::Robot {req.botId} found no available orders")
     return ListenToOrderStatusResponse(orderTaken=False)
-
-
 
 def handle_listen_for_order_taken(req):
     global signal_order_ready, order_taken

@@ -1,5 +1,6 @@
 int32 botId
 ---
 bool orderTaken
-int32 deliveryLocationX
-int32 deliveryLocationY
+int32[] deliveryLocations # Paths to the delivery locations
+#int32 deliveryLocationX
+#int32 deliveryLocationY
