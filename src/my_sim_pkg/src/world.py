@@ -17,7 +17,7 @@ class Settings:
     GRID_WIDTH = 16
     GRID_HEIGHT = 16
     GRID_SIZE = 1
-    NUM_OBSTACLES = 20
+    NUM_OBSTACLES = 10
     NUM_ROBOTS = 4
     GRID_MIN = 0
     GRID_MAX = 15
@@ -36,6 +36,7 @@ class Settings:
         "moveUp": (-1, 0),
         "moveDown": (1, 0),
     }
+    
 
 class World:
     def __init__(self, settings=Settings):
@@ -51,9 +52,13 @@ class World:
         self.houses = []
         self.robots = {}
 
+
     def set_tile(self, x, y, value):
         if 0 <= x < self.width and 0 <= y < self.height:
+            if value == TileType.OBSTACLE:
+                print(f"\033[91m\033[1mSET TILE AS OBSTACLE AT ({x}, {y})\033[0m")
             self.grid[x][y] = value
+
 
     def get_tile(self, x, y):
         if 0 <= x < self.width and 0 <= y < self.height:

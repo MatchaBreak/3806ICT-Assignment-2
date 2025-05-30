@@ -1,20 +1,16 @@
 from my_sim_pkg.srv import UpdateCurrentBotPositionRequest
-# for sensor detection (learn about obstacles in the world 1 tile ahead)
-from gazebo_msgs.srv import GetModelState 
 from collections import deque
 from enum import Enum
 from a_star import AStar
-from world import Settings
+from world import Settings, TileType
 import rospy
 
-# State machine for the robot
 class RobotState(Enum):
     QUEUING = 0
     WAITING_FOR_ORDER = 1
     DELIVERING = 2
     GOING_HOME = 3
 
-# Four robots exist in the Robot Controller (Executor)
 class Robot:
     def __init__(self, robot_id, controller, signal_queue, listen_order):
         self.id = robot_id
@@ -29,12 +25,19 @@ class Robot:
         self.current_path = deque()
         self.current_goal = None
 
-    def add_goal(self, goal):  # Ensure this line is indented correctly
+    def add_goal(self, goal):
         if goal not in self.goals:
             self.goals.append(goal)
             rospy.loginfo(f"ROBOT AGENT::{self.id} added goal: {goal}")
             if self.state == RobotState.QUEUING:
                 self.state = RobotState.WAITING_FOR_ORDER
+
+    def is_adjacent_to_goal(self):
+        if self.current_goal is None:
+            return False
+        x, y = self.current_location
+        gx, gy = self.current_goal
+        return abs(x - gx) + abs(y - gy) == 1
 
     def plan_path(self, goal):
         a_star = AStar(self.current_location, goal, self.controller.latest_world)
@@ -46,9 +49,14 @@ class Robot:
         else:
             rospy.logwarn(f"ROBOT AGENT::{self.id} could not find path to {goal}")
 
-    # Move the robot along the planned path (FIFO style)
     def move(self):
         if not self.current_path:
+            return
+
+        if self.detect_obstacle_ahead():
+            rospy.loginfo(f"ROBOT AGENT::{self.id} obstacle detected, replanning path.")
+            if self.current_goal:
+                self.plan_path(self.current_goal)
             return
 
         current_x, current_y = self.current_location
@@ -61,7 +69,6 @@ class Robot:
             return
 
         try:
-            # Create a request object for the service
             req = UpdateCurrentBotPositionRequest()
             req.botID = self.id
             req.direction = direction
@@ -80,7 +87,6 @@ class Robot:
         except rospy.ServiceException as e:
             rospy.logerr(f"ROBOT AGENT::{self.id} service call failed: {e}")
 
-    
     def update_state(self):
         if self.state == RobotState.QUEUING:
             try:
@@ -103,14 +109,42 @@ class Robot:
                 pass
 
         elif self.state in (RobotState.DELIVERING, RobotState.GOING_HOME):
+            # Skip move if adjacent to the goal (for delivery)
+            if self.state == RobotState.DELIVERING and self.is_adjacent_to_goal():
+                rospy.loginfo(f"Robot {self.id} delivered adjacent to {self.current_goal}")
+                self.plan_path(self.home_location)
+                self.state = RobotState.GOING_HOME
+                return
+
             self.move()
-            if not self.current_path:
-                if self.current_location == self.current_goal:
-                    if self.state == RobotState.DELIVERING:
-                        rospy.loginfo(f"Robot {self.id} delivered to {self.current_goal}")
-                        self.plan_path(self.home_location)
-                        self.state = RobotState.GOING_HOME
-                    else:
-                        rospy.loginfo(f"Robot {self.id} returned home")
-                        self.state = RobotState.QUEUING
-                        self.current_goal = None
+
+            # Check if robot reached home (only applies when GOING_HOME)
+            if not self.current_path and self.current_location == self.current_goal:
+                rospy.loginfo(f"Robot {self.id} returned home")
+                self.state = RobotState.QUEUING
+                self.current_goal = None
+
+
+    def detect_obstacle_ahead(self):
+        if not self.current_path:
+            return False
+
+        next_x, next_y = self.current_path[0]
+        #rospy.loginfo(f"ROBOT AGENT::{self.id} checking tile ahead: ({next_x}, {next_y})")
+        #rospy.loginfo(f"ROBOT AGENT::{self.id} current unknowns: {self.controller.unknown_obstacles}")
+
+        if (next_x, next_y) in self.controller.unknown_obstacles:
+            rospy.logwarn(f"ROBOT AGENT::{self.id} discovered obstacle at {(next_x, next_y)}")
+            #this tells the controller to tell the grid manager to update the authoritative interpretation of the world
+            self.controller.mark_obstacle(next_x, next_y)
+            self.controller.unknown_obstacles.remove((next_x, next_y))
+            self.controller.known_obstacles.append((next_x, next_y))
+            self.current_path.clear()
+            return True
+        
+        elif(next_x, next_y) in self.controller.known_obstacles:
+            rospy.logwarn(f"ROBOT AGENT::{self.id} obstacle detected at {(next_x, next_y)}")
+            self.current_path.clear()
+            return True
+
+        return False

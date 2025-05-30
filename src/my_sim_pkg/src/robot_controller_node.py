@@ -2,19 +2,22 @@
 import rospy
 from nav_msgs.msg import Odometry
 from gazebo_msgs.srv import SetModelState
+from gazebo_msgs.srv import GetModelState #for obstacle knowledge omniscience
 from std_msgs.msg import Int32MultiArray
 from collections import deque
 from threading import Lock
 from gazebo_msgs.msg import ModelState
 from gazebo_msgs.srv import SetModelStateRequest
+from my_sim_pkg.srv import UpdateGrid #to update grid manager's world state (authority of world state)
 import threading
+
 
 from my_sim_pkg.srv import (
     ListenToOrderStatus,
     SignalQueuedUp,
     UpdateCurrentBotPosition,
 )
-from world import Settings, World
+from world import Settings, World, TileType
 from robot import Robot
 
 # Executor for managing multiple robots in a simulation environment
@@ -28,6 +31,13 @@ class RobotController:
 
         self.robot_positions = {}
         self.robot_locations = {}
+        
+        #list of all unknown obstacles. Each time a robot detects an obstacle, it removes it from this list
+        self.unknown_obstacles = []
+        #after discovering an obstacle, add to this list so bots already on a path with 
+        #the detected obstacle in it can still avoid it (before the local modal is updated 
+        # for future pathfinding)
+        self.known_obstacles = []
 
         self.directions = {
             (0, -1): "moveLeft",
@@ -40,7 +50,7 @@ class RobotController:
         self.listen_order = rospy.ServiceProxy('/listen_to_order_status', ListenToOrderStatus)
         self.update_pos = rospy.ServiceProxy('/update_current_bot_position', UpdateCurrentBotPosition)
         self.set_model_state = rospy.ServiceProxy('/gazebo/set_model_state', SetModelState)
-
+        self.update_grid_srv = rospy.ServiceProxy('/update_grid', UpdateGrid)
         rospy.Subscriber('/world_grid', Int32MultiArray, self.world_callback)
 
         self.robots = {
@@ -61,9 +71,33 @@ class RobotController:
         for i, robot in self.robots.items():
             robot.current_location = self.robot_locations[i]
 
+        # Load known unknowns for robots and the dispatcher to discover
+        rospy.wait_for_service('/gazebo/get_model_state')
+        get_model = rospy.ServiceProxy('/gazebo/get_model_state', GetModelState)
+
+        for i in range(1, Settings.NUM_OBSTACLES + 1):
+            name = f"cardboard_box_{i}"
+            try:
+                res = get_model(name, "world")
+                x = int(round(res.pose.position.x / self.GRID_SIZE))
+                y = int(round(res.pose.position.y / self.GRID_SIZE))
+                self.unknown_obstacles.append((x, y))
+                rospy.loginfo(f"ROBOT CONTROLLER::Added obstacle candidate at ({x}, {y})")
+            except rospy.ServiceException as e:
+                rospy.logwarn(f"ROBOT CONTROLLER::Failed to locate {name}: {e}")
 
         self.controller_loop()
 
+    def mark_obstacle(self, x, y):
+        try:
+            res = self.update_grid_srv(tilePositionX=x, tilePositionY=y, tileType=TileType.OBSTACLE)
+            if res.success:
+                rospy.loginfo(f"Marked obstacle at ({x}, {y}) via UpdateGrid")
+            else:
+                rospy.logwarn(f"Failed to mark obstacle at ({x}, {y}) via UpdateGrid")
+        except rospy.ServiceException as e:
+            rospy.logerr(f"Service call to UpdateGrid failed: {e}")
+    
     def odom_callback(self, msg, bot_id):
         with self.lock:
             x = msg.pose.pose.position.x
@@ -126,10 +160,10 @@ class RobotController:
 
             # Update the robot's final position
             self.robot_locations[bot_id] = (x, y)
-            rospy.loginfo(f"Robot {bot_id} teleported to ({x}, {y})")
+            #rospy.loginfo(f"ROBOT CONTROLLER::Robot {bot_id} teleported to ({x}, {y})")
 
         except Exception as e:
-            rospy.logwarn(f"Failed to teleport robot {bot_id}: {e}")
+            rospy.logwarn(f"ROBOT CONTROLLER::Failed to teleport robot {bot_id}: {e}")
         
     def controller_loop(self):
         rate = rospy.Rate(5)

@@ -48,25 +48,28 @@ if __name__ == "__main__":
 
     rospy.init_node("spawn_obstacles")
 
-    # Get parameters from the launch file or use defaults (defaults to 4 if not provided in the world_simulation.launch)
     num_obstacles = rospy.get_param("~num_obstacles", 4)
-    # Minimum grid value (defaults to -8 if not provided in the world_simulation.launch)
     grid_min = rospy.get_param("~grid_min", -8)
-    # Maximum grid value (defaults to 8 if not provided in the world_simulation.launch)
     grid_max = rospy.get_param("~grid_max", 8)
     min_separation = rospy.get_param("~min_separation", 2)
     model_path = rospy.get_param("~model_path", "/root/3806ICT-Assignment-2/src/my_sim_pkg/models/cardboard_box/model.sdf")
 
-    # Generates the random positions
-    positions = generate_random_positions(num_obstacles, grid_min, grid_max, min_separation)
+    # Get existing house positions from parameter server
+    house_positions = rospy.get_param("/house_positions", [])
+    house_positions = [tuple(pos) for pos in house_positions]  # Ensure they are tuples
+
+    # Generate positions for obstacles that don't overlap houses
+    obstacle_positions = generate_random_positions(
+        num_obstacles,
+        grid_min,
+        grid_max,
+        min_separation,
+        existing_positions=house_positions
+    )
 
     rospy.loginfo("Waiting for Gazebo services...")
     rospy.wait_for_service('/gazebo/spawn_sdf_model')
     rospy.loginfo("Gazebo services are now available.")
 
-    # Spawn obstacles in Gazebo
-    for i, (x, y) in enumerate(positions, start=1):
+    for i, (x, y) in enumerate(obstacle_positions, start=1):
         spawn_obstacle(f"cardboard_box_{i}", model_path, x, y)
-
-    # PRINT PYTHON PATH via sys
-    rospy.loginfo(f"OBSTACLE SPAWNER::Python Path: {sys.path}")

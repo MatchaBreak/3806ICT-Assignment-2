@@ -7,6 +7,10 @@ from my_sim_pkg.srv import (
     GetHouseLocations,
     GetHouseLocationsResponse,
 )
+
+#to let the controller update the world state
+from my_sim_pkg.srv import UpdateGrid, UpdateGridResponse
+
 from world import World, TileType, Settings
 from robot import Robot
 
@@ -28,9 +32,20 @@ class GridManager:
 
         rospy.Service('/update_current_bot_position', UpdateCurrentBotPosition, self.update_position)
         rospy.Service('/get_house_locations', GetHouseLocations, self.get_house_locations)
-
+        # to let the controller update the world state
+        rospy.Service('/update_grid', UpdateGrid, self.update_grid)
         rospy.loginfo("GRID MANAGER::Grid Manager ready.")
         self.world.dump_to_file()
+
+    def update_grid(self, req):
+        if self.world.in_bounds(req.tilePositionX, req.tilePositionY):
+            self.world.set_tile(req.tilePositionX, req.tilePositionY, req.tileType)
+            rospy.loginfo(f"GRID MANAGER::Updated tile at ({req.tilePositionX}, {req.tilePositionY}) to {req.tileType}")
+            self.world.dump_to_file()
+            return UpdateGridResponse(success=True)
+        else:
+            rospy.logwarn(f"GRID MANAGER::Invalid grid update request at ({req.tilePositionX}, {req.tilePositionY})")
+            return UpdateGridResponse(success=False)
 
     def populate_houses(self):
         rospy.wait_for_service('/gazebo/get_model_state')

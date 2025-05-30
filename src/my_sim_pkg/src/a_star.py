@@ -62,7 +62,9 @@ class AStar:
             n_row, n_col = row + d_row, col + d_col
             if self.world.in_bounds(n_row, n_col):
                 tile = self.world.get_tile(n_row, n_col)
-                if tile in [TileType.UNVISITED, TileType.VISITED, TileType.HOUSE]:
+                if tile in [TileType.UNVISITED, TileType.VISITED] and tile != TileType.OBSTACLE:
+                    neighbors.append((n_row, n_col))
+                if  tile == TileType.HOUSE and (n_row, n_col) == self.goal:
                     neighbors.append((n_row, n_col))
                 elif tile in [TileType.ROBOT_1, TileType.ROBOT_2, TileType.ROBOT_3, TileType.ROBOT_4]:
                     # Allow moving into robot-tile only if it's the goal (e.g., for rendezvous)
