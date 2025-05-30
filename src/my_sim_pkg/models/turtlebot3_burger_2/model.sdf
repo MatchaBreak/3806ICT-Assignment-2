@@ -17,6 +17,7 @@
         <mass>1.0</mass>
       </inertial>
 
+      <!--
       <collision name="base_collision">
         <pose>-0.032 0 0.070 0 0 0</pose>
         <geometry>
@@ -24,7 +25,9 @@
             <size>0.140 0.140 0.140</size>
           </box>
         </geometry>
+        <collide_bitmask>0</collide_bitmask>
       </collision>
+       -->
 
       <visual name="base_visual">
         <pose>-0.032 0 0 0 0 0</pose>

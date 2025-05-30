@@ -7,7 +7,7 @@
         <geometry>
           <mesh>
             <uri>model://house_1/meshes/house_1.dae</uri>
-            <scale>0.05 0.05 0.05</scale>
+            <scale>0.1 0.1 0.1</scale>
           </mesh>
         </geometry>
       </collision>
@@ -15,7 +15,7 @@
         <geometry>
           <mesh>
             <uri>model://house_1/meshes/house_1.dae</uri>
-            <scale>0.05 0.05 0.05</scale>
+            <scale>0.1 0.1 0.1</scale>
           </mesh>
         </geometry>
         <material>

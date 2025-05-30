@@ -12,8 +12,6 @@ find_package(catkin REQUIRED COMPONENTS
 
 add_service_files(
   FILES
-    grid/FileLockRequest.srv
-    grid/FileUnlockRequest.srv
     grid/GetHouseLocations.srv
     grid/UpdateCurrentBotPosition.srv
     grid/UpdateGrid.srv

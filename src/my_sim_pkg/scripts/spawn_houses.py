@@ -1,4 +1,4 @@
-#To spawn houses to which the turtlebots can deliver pizzas in Gazebo
+# To spawn houses and the Base Station in Gazebo
 
 import random
 import math
@@ -7,7 +7,7 @@ import sys
 from gazebo_msgs.srv import SpawnModel
 from geometry_msgs.msg import Pose
 
-def generate_random_positions(num_houses, grid_min, grid_max, min_separation, center=(8, 8), min_distance_from_center=4):
+def generate_random_positions(num_houses, grid_min, grid_max, min_separation, center=(8, 8), min_distance_from_center=6):
     positions = []
     while len(positions) < num_houses:
         # Generate random integers for x and y within the grid range
@@ -23,7 +23,10 @@ def generate_random_positions(num_houses, grid_min, grid_max, min_separation, ce
             positions.append((x, y))
     return positions
 
-def spawn_house(model_name, model_path, x, y, z=0):
+def spawn_model(model_name, model_path, x, y, z=0):
+    """
+    Generic function to spawn a model in Gazebo.
+    """
     rospy.wait_for_service('/gazebo/spawn_sdf_model')
     try:
         spawn_model = rospy.ServiceProxy('/gazebo/spawn_sdf_model', SpawnModel)
@@ -46,7 +49,8 @@ if __name__ == "__main__":
     grid_min = rospy.get_param("~grid_min", -8)
     grid_max = rospy.get_param("~grid_max", 8)
     min_separation = rospy.get_param("~min_separation", 2)
-    model_path = rospy.get_param("~model_path", "/root/3806ICT-Assignment-2/src/my_sim_pkg/models/house_1/model.sdf")
+    house_model_path = rospy.get_param("~model_path", "/root/3806ICT-Assignment-2/src/my_sim_pkg/models/house_1/model.sdf")
+    base_station_model_path = "/root/ros_python/3806ICT-Assignment-2/src/my_sim_pkg/models/Base Station/model.sdf"
 
     # Generate random positions for houses
     positions = generate_random_positions(num_houses, grid_min, grid_max, min_separation)
@@ -57,7 +61,10 @@ if __name__ == "__main__":
 
     # Spawn houses in Gazebo
     for i, (x, y) in enumerate(positions, start=1):
-        spawn_house(f"house_{i}", model_path, x, y)
+        spawn_model(f"house_{i}", house_model_path, x, y)
+
+    # Spawn Base Station at the center (8, 8)
+    spawn_model("BaseStation", base_station_model_path, 8, 8)
 
     # Publish house positions to the ROS parameter server
     rospy.set_param("/house_positions", positions)

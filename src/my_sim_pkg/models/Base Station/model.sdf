@@ -1,0 +1,27 @@
+<?xml version='1.0' ?>
+<sdf version='1.6'>
+  <model name='BaseStation'>
+    <static>true</static>
+    <link name='link'>
+      <collision name='collision_tent'>
+        <geometry>
+          <mesh>
+            <uri>model://Base Station/meshes/tent.dae</uri>
+           <scale>0.37 0.37 0.37</scale>
+          </mesh>
+        </geometry>
+      </collision>
+      
+      <visual name='visual_tent'>
+        <geometry>
+          <mesh>
+            <uri>model://Base Station/meshes/tent.dae</uri>
+            <scale>0.37 0.37 0.37</scale>
+          </mesh>
+        </geometry>
+      </visual>
+      
+    </link>
+  </model>
+</sdf>
+    

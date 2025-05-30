@@ -1,7 +1,7 @@
 <?xml version="1.0" ?>
 <sdf version="1.6">
   <model name="cardboard_box">
-    <pose>0 0 0.15 0 0 0</pose>
+    <pose>0 0 0.075 0 0 0</pose> <!-- Adjust pose to match new size -->
     <link name="link">
       <inertial>
         <mass>2</mass>
@@ -17,7 +17,7 @@
       <collision name="collision">
         <geometry>
           <box>
-            <size>0.5 0.4 0.3</size>
+            <size>0.25 0.2 0.15</size> <!-- Reduced dimensions -->
           </box>
         </geometry>
         <surface>
@@ -38,11 +38,11 @@
         </surface>
       </collision>
       <visual name="visual">
-        <pose>0 0 -0.15 0 0 0</pose>
+        <pose>0 0 -0.075 0 0 0</pose> <!-- Adjust pose to match new size -->
         <geometry>
           <mesh>
             <uri>model://cardboard_box/meshes/cardboard_box.dae</uri>
-            <scale>1.25931896 1.007455168 0.755591376</scale>
+            <scale>0.62965948 0.503727584 0.377795688</scale> <!-- Reduced scale -->
           </mesh>
         </geometry>
       </visual>
