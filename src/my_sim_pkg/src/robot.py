@@ -1,16 +1,20 @@
 from my_sim_pkg.srv import UpdateCurrentBotPositionRequest
+# for sensor detection (learn about obstacles in the world 1 tile ahead)
+from gazebo_msgs.srv import GetModelState 
 from collections import deque
 from enum import Enum
 from a_star import AStar
 from world import Settings
 import rospy
 
+# State machine for the robot
 class RobotState(Enum):
     QUEUING = 0
     WAITING_FOR_ORDER = 1
     DELIVERING = 2
     GOING_HOME = 3
 
+# Four robots exist in the Robot Controller (Executor)
 class Robot:
     def __init__(self, robot_id, controller, signal_queue, listen_order):
         self.id = robot_id
@@ -42,6 +46,7 @@ class Robot:
         else:
             rospy.logwarn(f"ROBOT AGENT::{self.id} could not find path to {goal}")
 
+    # Move the robot along the planned path (FIFO style)
     def move(self):
         if not self.current_path:
             return

@@ -17,6 +17,7 @@ from my_sim_pkg.srv import (
 from world import Settings, World
 from robot import Robot
 
+# Executor for managing multiple robots in a simulation environment
 class RobotController:
     def __init__(self):
         rospy.init_node('robot_controller_node')
@@ -71,6 +72,7 @@ class RobotController:
             grid_y = int(round(y / self.GRID_SIZE))
             self.robot_positions[bot_id] = (grid_x, grid_y)
 
+    #update the controller's understanding of the world grid based on the grid manager's World object
     def world_callback(self, msg):
         data = msg.data
         width = self.latest_world.width
@@ -80,6 +82,7 @@ class RobotController:
                 idx = i * width + j
                 self.latest_world.grid[i][j] = data[idx]
 
+    # Wait for all robots to publish their odometry data 
     def wait_for_odometry(self):
         rate = rospy.Rate(1)
         while not rospy.is_shutdown():
@@ -95,6 +98,7 @@ class RobotController:
                 self.robot_locations[i] = Settings.robot_positions[i]
 
 
+    # Teleport a robot to a new position in Gazebo (so the world environment and Gazebo are in sync)
     def teleport_robot(self, bot_id, x, y, steps=10, delay=0.05):
         try:
             # Get the current position of the robot

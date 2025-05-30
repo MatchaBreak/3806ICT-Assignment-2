@@ -11,11 +11,10 @@ from my_sim_pkg.srv import (
 )
 
 
-def generate_random_positions(num_obstacles, grid_min, grid_max, min_separation, center=(8, 8),
-                              min_distance_from_center=4):
-    positions = []
-    while len(positions) < num_obstacles:
-        # Generate random integers for x and y within the grid range
+def generate_random_positions(num_objects, grid_min, grid_max, min_separation, existing_positions=None, center=(8, 8), min_distance_from_center=4):
+    existing_positions = existing_positions if existing_positions else []  # Ensure existing_positions is a list
+    positions = existing_positions[:]
+    while len(positions) < num_objects + len(existing_positions):
         x = random.randint(grid_min, grid_max)
         y = random.randint(grid_min, grid_max)
 
@@ -26,7 +25,7 @@ def generate_random_positions(num_obstacles, grid_min, grid_max, min_separation,
         # Ensure no overlap with existing positions
         if all(math.sqrt((x - px) ** 2 + (y - py) ** 2) >= min_separation for px, py in positions):
             positions.append((x, y))
-    return positions
+    return positions[len(existing_positions):]  # Return only the new positions
 
 
 def spawn_obstacle(model_name, model_path, x, y, z=0):

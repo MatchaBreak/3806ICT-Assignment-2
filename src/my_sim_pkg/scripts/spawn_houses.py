@@ -39,19 +39,16 @@ def spawn_house(model_name, model_path, x, y, z=0):
         rospy.logerr(f"Failed to spawn {model_name}: {e}")
 
 if __name__ == "__main__":
-   
     rospy.init_node("spawn_houses")
 
-    # Get parameters from the launch file or use defaults (defaults to 4 if not provided in the world_simulation.launch)
+    # Get parameters from the launch file or use defaults
     num_houses = rospy.get_param("~num_houses", 4)
-    # Minimum grid value (defaults to -8 if not provided in the world_simulation.launch)
-    grid_min = rospy.get_param("~grid_min", -8)  
-    # Maximum grid value (defaults to 8 if not provided in the world_simulation.launch)
-    grid_max = rospy.get_param("~grid_max", 8)   
+    grid_min = rospy.get_param("~grid_min", -8)
+    grid_max = rospy.get_param("~grid_max", 8)
     min_separation = rospy.get_param("~min_separation", 2)
     model_path = rospy.get_param("~model_path", "/root/3806ICT-Assignment-2/src/my_sim_pkg/models/house_1/model.sdf")
 
-    # Generates the random positions
+    # Generate random positions for houses
     positions = generate_random_positions(num_houses, grid_min, grid_max, min_separation)
 
     rospy.loginfo("Waiting for Gazebo services...")
@@ -61,6 +58,7 @@ if __name__ == "__main__":
     # Spawn houses in Gazebo
     for i, (x, y) in enumerate(positions, start=1):
         spawn_house(f"house_{i}", model_path, x, y)
-    
-    #PRINT PYTHON PATH via sys
-    rospy.loginfo(f"HOUSE SPAWNER::Python Path: {sys.path}")
+
+    # Publish house positions to the ROS parameter server
+    rospy.set_param("/house_positions", positions)
+    rospy.loginfo(f"HOUSE SPAWNER::House positions: {positions}")
