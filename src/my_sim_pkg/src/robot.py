@@ -1,9 +1,10 @@
 from my_sim_pkg.srv import UpdateCurrentBotPositionRequest
 from collections import deque
 from enum import Enum
-from a_star import AStar
-from world import Settings
 import rospy
+
+from a_star import AStar
+from settings.load_yaml import load_shared_settings
 
 class RobotState(Enum):
     QUEUING = 0
@@ -18,7 +19,12 @@ class Robot:
         self.signal_queue = signal_queue
         self.listen_order = listen_order
         self.state = RobotState.QUEUING
-        self.home_location = Settings.robot_positions[robot_id]
+        
+        self.settings = load_shared_settings()
+        self.home_location = (
+            self.settings.get(f"robot_{self.id}_x", 8),
+            self.settings.get(f"robot_{self.id}_y", 8)
+        )
         self.current_location = self.home_location
         self.goals = []
         self.current_path = deque()

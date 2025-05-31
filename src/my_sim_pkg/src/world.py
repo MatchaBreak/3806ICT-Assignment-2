@@ -1,5 +1,16 @@
 import rospy
 import os
+from settings.load_yaml import load_shared_settings
+
+
+"""
+    direction_map = {
+        "moveLeft": (0, -1),
+        "moveRight": (0, 1),
+        "moveUp": (-1, 0),
+        "moveDown": (1, 0),
+    }
+"""
 
 class TileType:
     UNVISITED = 0
@@ -13,41 +24,32 @@ class TileType:
     HOUSE = -4
     NONEXIST = -1  # Invalid/out-of-bounds
 
-class Settings:
-    GRID_WIDTH = 16
-    GRID_HEIGHT = 16
-    GRID_SIZE = 1
-    NUM_OBSTACLES = 10
-    NUM_ROBOTS = 4
-    GRID_MIN = 0
-    GRID_MAX = 15
-    NUM_HOUSES = 4
-    HOME_X = 8
-    HOME_Y = 8
-    robot_positions = {
-        1: (7, 7),
-        2: (7, 9),
-        3: (9, 7),
-        4: (9, 9)
-    }
-    direction_map = {
-        "moveLeft": (0, -1),
-        "moveRight": (0, 1),
-        "moveUp": (-1, 0),
-        "moveDown": (1, 0),
-    }
-    
 
 class World:
-    def __init__(self, settings=Settings):
-        self.settings = settings
-        self.width = settings.GRID_WIDTH
-        self.height = settings.GRID_HEIGHT
-        self.tile_size = settings.GRID_SIZE
+    def __init__(self):
+        self.settings = load_shared_settings()
+        # Grid settings
+        self.width = self.settings.get("GRID_WIDTH", 16)
+        self.height = self.settings.get("GRID_HEIGHT", 16)
+        self.tile_size = self.settings.get("TILE_SIZE", 1)
+        
+        # Base position
+        self.base_position = (
+            self.settings.get("HOME_X", 8),
+            self.settings.get("HOME_Y", 8)
+        )
+        # Initialise grid
         self.grid = [[TileType.UNVISITED for _ in range(self.width)] for _ in range(self.height)]
-
-        self.base_position = (settings.HOME_X, settings.HOME_Y)
         self.grid[self.base_position[1]][self.base_position[0]] = TileType.PIZZA
+
+        # Robot positions
+        self.robot_positions = {
+            i: (
+                self.settings.get(f"robot_{i}_x", 0),
+                self.settings.get(f"robot_{i}_y", 0)
+            )
+            for i in range(1, self.settings.get("NUM_ROBOTS", 4) + 1)
+        }
 
         self.houses = []
         self.robots = {}

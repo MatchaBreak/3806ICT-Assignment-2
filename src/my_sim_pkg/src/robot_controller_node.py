@@ -10,22 +10,27 @@ from gazebo_msgs.msg import ModelState
 from gazebo_msgs.srv import SetModelStateRequest
 from my_sim_pkg.srv import UpdateGrid #to update grid manager's world state (authority of world state)
 import threading
-
-
 from my_sim_pkg.srv import (
     ListenToOrderStatus,
     SignalQueuedUp,
     UpdateCurrentBotPosition,
 )
-from world import Settings, World, TileType
+
+from world import World, TileType
+from settings.load_yaml import load_shared_settings
+
 from robot import Robot
 
 # Executor for managing multiple robots in a simulation environment
 class RobotController:
     def __init__(self):
         rospy.init_node('robot_controller_node')
-        self.NUM_ROBOTS = Settings.NUM_ROBOTS
-        self.GRID_SIZE = Settings.GRID_SIZE
+        
+        self.settings = load_shared_settings()
+        self.NUM_ROBOTS = self.settings.get("NUM_ROBOTS", 4)
+        self.TILE_SIZE = self.settings.get("TILE_SIZE", 1)
+        self.NUM_OBSTACLES = self.settings.get("NUM_OBSTACLES", 4)
+       
         self.latest_world = World()
         self.lock = Lock()
 
@@ -75,12 +80,12 @@ class RobotController:
         rospy.wait_for_service('/gazebo/get_model_state')
         get_model = rospy.ServiceProxy('/gazebo/get_model_state', GetModelState)
 
-        for i in range(1, Settings.NUM_OBSTACLES + 1):
+        for i in range(1, self.NUM_OBSTACLES + 1):
             name = f"cardboard_box_{i}"
             try:
                 res = get_model(name, "world")
-                x = int(round(res.pose.position.x / self.GRID_SIZE))
-                y = int(round(res.pose.position.y / self.GRID_SIZE))
+                x = int(round(res.pose.position.x / self.TILE_SIZE))
+                y = int(round(res.pose.position.y / self.TILE_SIZE))
                 self.unknown_obstacles.append((x, y))
                 rospy.loginfo(f"ROBOT CONTROLLER::Added obstacle candidate at ({x}, {y})")
             except rospy.ServiceException as e:
@@ -102,8 +107,8 @@ class RobotController:
         with self.lock:
             x = msg.pose.pose.position.x
             y = msg.pose.pose.position.y
-            grid_x = int(round(x / self.GRID_SIZE))
-            grid_y = int(round(y / self.GRID_SIZE))
+            grid_x = int(round(x / self.TILE_SIZE))
+            grid_y = int(round(y / self.TILE_SIZE))
             self.robot_positions[bot_id] = (grid_x, grid_y)
 
     #update the controller's understanding of the world grid based on the grid manager's World object
@@ -146,8 +151,8 @@ class RobotController:
                 # Set the robot's state for Gazebo
                 state = ModelState()
                 state.model_name = f"turtlebot3_burger_{bot_id}"
-                state.pose.position.x = interpolated_x * self.GRID_SIZE
-                state.pose.position.y = interpolated_y * self.GRID_SIZE
+                state.pose.position.x = interpolated_x * self.TILE_SIZE
+                state.pose.position.y = interpolated_y * self.TILE_SIZE
                 state.pose.position.z = 0.1
                 state.pose.orientation.w = 1.0
 

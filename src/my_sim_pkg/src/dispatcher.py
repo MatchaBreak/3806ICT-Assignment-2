@@ -1,7 +1,5 @@
 
 import rospy
-import yaml 
-import rospkg
 import random
 from copy import deepcopy
 from networkx import DiGraph, from_numpy_array, relabel_nodes, set_node_attributes
@@ -16,24 +14,28 @@ from my_sim_pkg.srv import (
     SignalOrderReadyRequest
 )
 
+from settings.load_yaml import load_shared_settings
+
+
 class Dispatcher:
     def __init__(self):
         rospy.init_node("dispatcher")
-        
-        # Locate the YAML file dynamically
-        rospack = rospkg.RosPack()
-        package_path = rospack.get_path("my_sim_pkg")  # Replace with your package name
-        yaml_file_path = f"{package_path}/config/shared_settings.yaml"
 
-        # Load YAML settings
-        try:
-            with open(yaml_file_path, "r") as yaml_file:
-                self.settings = yaml.safe_load(yaml_file)
-                rospy.loginfo("dispatcher: Successfully loaded shared settings.")
-        except Exception as e:
-            rospy.logerr(f"dispatcher: Failed to load shared settings: {e}")
+        # Load shared settings using the helper function
+        self.settings = load_shared_settings()
+        if not self.settings:
+            rospy.logerr("DISPATCHER::Failed to load shared settings. Using default values.")
             self.settings = {}
-        
+
+        # InitialiSe dispatcher parameters from YAML
+        self.min_pizzas = self.settings.get("MIN_PIZZAS", 1)
+        self.max_pizzas = self.settings.get("MAX_PIZZAS", 5)
+        self.load_capacity = self.settings.get("LOAD_CAPACITY", 10)
+        self.stops_per_trip = self.settings.get("STOPS_PER_TRIP", 4)
+
+        rospy.loginfo(f"DISPATCHER::Dispatcher initialized with settings: {self.settings}")
+
+        # Wait for services
         rospy.wait_for_service("/get_house_locations")
         rospy.wait_for_service("/listen_to_queue")
         rospy.wait_for_service("/signal_order_ready")
@@ -43,12 +45,6 @@ class Dispatcher:
         self.listen_queue = rospy.ServiceProxy("/listen_to_queue", ListenToQueue)
         self.signal_ready = rospy.ServiceProxy("/signal_order_ready", SignalOrderReady)
         self.listen_taken = rospy.ServiceProxy("/listen_for_order_taken", ListenForOrderTaken)
-
-        self.min_pizzas = self.settings.get("MIN_PIZZAS", 1)
-        self.max_pizzas = self.settings.get("MAX_PIZZAS", 5)
-        self.load_capacity = self.settings.get("LOAD_CAPACITY", 10)
-        self.stops_per_trip = self.settings.get("STOPS_PER_TRIP", 4)
-        rospy.loginfo(f"DISPATCHER::Dispatcher initialised with settings: {self.settings}")
 
         self.rate = rospy.Rate(1)
         self.route_queue = []

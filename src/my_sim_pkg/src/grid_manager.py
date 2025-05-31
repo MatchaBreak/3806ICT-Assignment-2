@@ -11,19 +11,36 @@ from my_sim_pkg.srv import (
 #to let the controller update the world state
 from my_sim_pkg.srv import UpdateGrid, UpdateGridResponse
 
-from world import World, TileType, Settings
+# our files
+from settings.load_yaml import load_shared_settings
+from world import World, TileType
 from robot import Robot
 
-GRID_WIDTH = Settings.GRID_WIDTH
-GRID_HEIGHT = Settings.GRID_HEIGHT
-GRID_SIZE = Settings.GRID_SIZE
-NUM_ROBOTS = Settings.NUM_ROBOTS
-NUM_HOUSES = Settings.NUM_HOUSES
 
 class GridManager:
     def __init__(self):
         self.world = World()
-
+        
+        self.settings = load_shared_settings()
+        # Load shared settings using the helper function
+        self.GRID_WIDTH = self.settings.get("GRID_WIDTH", 16)
+        self.GRID_HEIGHT = self.settings.get("GRID_HEIGHT", 16)
+        self.TILE_SIZE = self.settings.get("TILE_SIZE", 1)
+        self.NUM_ROBOTS = self.settings.get("NUM_ROBOTS", 4)
+        self.NUM_HOUSES = self.settings.get("NUM_HOUSES", 4)
+       
+        # So it knows how to move
+        self.direction_map = {
+            key: tuple(value) for key, value in self.settings.get("direction_map", {}).items()
+        }
+        """
+            direction_map = {
+                "moveLeft": (0, -1),
+                "moveRight": (0, 1),
+                "moveUp": (-1, 0),
+                "moveDown": (1, 0),
+            }
+        """
         self.populate_houses()
         self.populate_robots()
 
@@ -51,12 +68,12 @@ class GridManager:
         rospy.wait_for_service('/gazebo/get_model_state')
         get_model = rospy.ServiceProxy('/gazebo/get_model_state', GetModelState)
 
-        for i in range(1, NUM_HOUSES + 1):
+        for i in range(1, self.NUM_HOUSES + 1):
             name = f"house_{i}"
             try:
                 res = get_model(name, "world")
-                x = int(res.pose.position.x // GRID_SIZE)
-                y = int(res.pose.position.y // GRID_SIZE)
+                x = int(res.pose.position.x // self.TILE_SIZE)
+                y = int(res.pose.position.y // self.TILE_SIZE)
                 self.world.set_tile(x, y, TileType.HOUSE)
                 self.world.houses.append((x, y))
                 rospy.loginfo(f"GRID MANAGER:: House {i} is at ({x}, {y})")
@@ -67,12 +84,12 @@ class GridManager:
         rospy.wait_for_service('/gazebo/get_model_state')
         get_model = rospy.ServiceProxy('/gazebo/get_model_state', GetModelState)
 
-        for i in range(NUM_ROBOTS):
+        for i in range(self.NUM_ROBOTS):
             name = f"turtlebot3_burger_{i+1}"
             try:
                 res = get_model(name, "world")
-                y = max(0, min(GRID_WIDTH - 1, round(res.pose.position.x / GRID_SIZE)))
-                x = max(0, min(GRID_HEIGHT - 1, round(res.pose.position.y / GRID_SIZE)))
+                y = max(0, min(self.GRID_WIDTH - 1, round(res.pose.position.x / self.TILE_SIZE)))
+                x = max(0, min(self.GRID_HEIGHT - 1, round(res.pose.position.y / self.TILE_SIZE)))
                 tile_type = getattr(TileType, f"ROBOT_{i+1}")
                 self.world.set_tile(x, y, tile_type)
                 self.world.robots[i + 1] = (x, y)
@@ -83,7 +100,7 @@ class GridManager:
                 rospy.logerr(f"GRID MANAGER::Failed to get model state for {name}: {e}")
 
     def update_position(self, req):
-        dx, dy = Settings.direction_map.get(req.direction, (0, 0))
+        dx, dy = self.direction_map.get(req.direction, (0, 0))
         curr_x, curr_y = req.currentX, req.currentY
         new_x = curr_x + dx
         new_y = curr_y + dy

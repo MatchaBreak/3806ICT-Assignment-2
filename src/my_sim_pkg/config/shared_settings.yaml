@@ -1,14 +1,25 @@
+# Grid settings
 GRID_WIDTH: 16
 GRID_HEIGHT: 16
-GRID_SIZE: 1
-NUM_OBSTACLES: 20
-NUM_ROBOTS: 4
+TILE_SIZE: 1
 GRID_MIN: 0
 GRID_MAX: 15
+
+# Direction map
+direction_map:
+  moveLeft: [0, -1]
+  moveRight: [0, 1]
+  moveUp: [-1, 0]
+  moveDown: [1, 0]
+
+# World settings
+NUM_OBSTACLES: 10
+NUM_ROBOTS: 4
 NUM_HOUSES: 4
 HOME_X: 8
 HOME_Y: 8
-# Robot positions (spawn around base (8,8)))
+
+# Robot positions (spawn around base (8,8)
 robot_1_x: 7
 robot_1_y: 8
 robot_2_x: 9
@@ -18,10 +29,8 @@ robot_3_y: 7
 robot_4_x: 8
 robot_4_y: 9
 
-
-#dispatcher paramaters
-MIN_PIZZAS: 1 
+# Dispatcher parameters
+MIN_PIZZAS: 1
 MAX_PIZZAS: 5
 LOAD_CAPACITY: 10
 STOPS_PER_TRIP: 4
-
