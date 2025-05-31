@@ -50,7 +50,7 @@ if __name__ == "__main__":
     grid_max = rospy.get_param("~grid_max", 8)
     min_separation = rospy.get_param("~min_separation", 2)
     house_model_path = rospy.get_param("~model_path", "/root/3806ICT-Assignment-2/src/my_sim_pkg/models/house_1/model.sdf")
-    base_station_model_path = "/root/ros_python/3806ICT-Assignment-2/src/my_sim_pkg/models/Base Station/model.sdf"
+    base_station_model_path = rospy.get_param("~base_station_model_path", "/root/ros_python/3806ICT-Assignment-2/src/my_sim_pkg/models/Base Station/model.sdf")
 
     # Generate random positions for houses
     positions = generate_random_positions(num_houses, grid_min, grid_max, min_separation)
