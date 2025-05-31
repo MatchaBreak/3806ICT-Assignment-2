@@ -1,33 +1,12 @@
 <launch>
-    <!-- Declare parameters -->
-    <arg name="world_file" default="$(find my_sim_pkg)/worlds/pizza_delivery_world.sdf"/>
-    <arg name="paused" default="false"/>
-    <arg name="use_sim_time" default="true"/>
-
     <!-- Start Gazebo server -->
-    <node name="gazebo" pkg="gazebo_ros" type="gzserver" args="-s libgazebo_ros_init.so -s libgazebo_ros_factory.so --verbose $(arg world_file)" output="screen">
-        <param name="use_sim_time" value="$(arg use_sim_time)"/>
+    <node name="gazebo" pkg="gazebo_ros" type="gzserver" args="-s libgazebo_ros_init.so -s libgazebo_ros_factory.so --verbose $(find my_sim_pkg)/worlds/pizza_delivery_world.sdf" output="screen">
+        <param name="use_sim_time" value="true"/>
     </node>
 
     <!-- Start Gazebo client -->
     <node name="gazebo_gui" pkg="gazebo_ros" type="gzclient" output="screen"/>
 
-    <!-- Spawn houses dynamically -->
-    <node pkg="my_sim_pkg" type="spawn_houses.py" name="spawn_houses" output="screen">
-        <param name="num_houses" value="4"/>
-        <param name="grid_min" value="0"/>
-        <param name="grid_max" value="15"/>
-        <param name="min_separation" value="2"/>
-        <param name="model_path" value="$(find my_sim_pkg)/models/house_1/model.sdf"/>
-    </node>
-    
-    <!-- Spawn obstacles dynamically -->
-    <node pkg="my_sim_pkg" type="spawn_obstacles.py" name="spawn_obstacles" output="screen">
-        <param name="num_obstacles" value="10"/>
-        <param name="grid_min" value="0"/>
-        <param name="grid_max" value="15"/>
-        <param name="min_separation" value="2"/>
-        <param name="model_path" value="$(find my_sim_pkg)/models/cardboard_box/model.sdf"/>
-    </node>
-
+    <!-- Spawn entities dynamically -->
+    <node pkg="my_sim_pkg" type="spawn_entities.py" name="spawn_entities" output="screen"/>
 </launch>

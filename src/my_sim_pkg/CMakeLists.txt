@@ -41,6 +41,7 @@ catkin_install_python(PROGRAMS
   src/robot_controller_node.py
   scripts/spawn_houses.py 
   scripts/spawn_obstacles.py 
+  scripts/spawn_entities.py
   DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}
 )
 

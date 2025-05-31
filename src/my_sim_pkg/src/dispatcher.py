@@ -29,20 +29,20 @@ class Dispatcher:
             rospy.logerr("DISPATCHER::Failed to load shared settings. Using default values.")
             self.settings = {}
 
-        # InitialiSe dispatcher parameters from YAML
+        # Initialize dispatcher parameters from YAML
+        self.seed = self.settings.get("SEED", 1)
         self.min_pizzas = self.settings.get("MIN_PIZZAS", 1)
         self.max_pizzas = self.settings.get("MAX_PIZZAS", 5)
         self.load_capacity = self.settings.get("LOAD_CAPACITY", 10)
         self.stops_per_trip = self.settings.get("STOPS_PER_TRIP", 4)
         self.total_pizzas_goal = self.settings.get("TOTAL_PIZZAS_GOAL", 20)
-        #runs until pizzas_delivered == total_pizzas_goal
         self.pizzas_delivered = 0
         self.start_time = time.time()
-        
-        #for the output into OUTPUT_TESTS
+
+        # For the output into OUTPUT_TESTS
         self.output_dir = os.path.join(os.path.dirname(__file__), "OUTPUT_TESTS")
         os.makedirs(self.output_dir, exist_ok=True)
-        
+
         rospy.loginfo(f"DISPATCHER::Dispatcher initialized with settings: {self.settings}")
 
         # Wait for services
@@ -62,6 +62,9 @@ class Dispatcher:
         self.houses = []
         self.building_positions = []
         self.demand_each_house = {}
+
+        # Track return times for robots
+        self.robot_return_times = {}
 
         self.setup()
 
@@ -104,9 +107,18 @@ class Dispatcher:
         self.distance_matrix = self.create_distance_matrix(self.building_positions)
 
     def generate_routes(self):
+        # Filter out houses with zero demand
+        active_houses = {i: demand for i, demand in self.demand_each_house.items() if demand > 0}
+
+        # If no active houses remain, stop generating routes
+        if not active_houses:
+            rospy.loginfo("DISPATCHER::All houses have received their pizzas. No routes to generate.")
+            return
+
+        # Create distance matrix for active houses
         A = array(self.distance_matrix, dtype=[("cost", int)])
         G = from_numpy_array(A, create_using=DiGraph())
-        set_node_attributes(G, values=self.demand_each_house, name="demand")
+        set_node_attributes(G, values=active_houses, name="demand")
         G = relabel_nodes(G, {0: "Source", len(self.building_positions): "Sink"})
         prob = VehicleRoutingProblem(G, load_capacity=self.load_capacity)
         prob.num_stops = self.stops_per_trip
@@ -135,7 +147,6 @@ class Dispatcher:
             self.route_queue.append(coords)
 
     def dispatch_loop(self):
-        # means it runs until all pizzas are delivered
         while not rospy.is_shutdown() and self.pizzas_delivered < self.total_pizzas_goal:
             try:
                 queue_response = self.listen_queue()
@@ -145,7 +156,7 @@ class Dispatcher:
                     rospy.sleep(2)
                     continue
             except rospy.ServiceException:
-                rospy.logerr("DISPATCHER::failed to listen to queue")
+                rospy.logerr("DISPATCHER::Failed to listen to queue")
                 self.rate.sleep()
                 continue
 
@@ -164,26 +175,27 @@ class Dispatcher:
                 try:
                     response = self.signal_ready(order_ready)
                     if response.success:
-                        rospy.loginfo(f"DISPATCHER::robot {bot_id} notified successfully")
+                        rospy.loginfo(f"DISPATCHER::Robot {bot_id} notified successfully")
                         break
                     else:
-                        rospy.loginfo("DISPATCHER::waiting for previous robot to pick up order")
+                        rospy.loginfo("DISPATCHER::Waiting for previous robot to pick up order")
                 except rospy.ServiceException:
-                    rospy.logerr("DISPATCHER::failed to signal order readiness")
+                    rospy.logerr("DISPATCHER::Failed to signal order readiness")
                 rospy.sleep(2)
 
             try:
                 self.listen_taken()
-                rospy.loginfo(f"DISPATCHER::robot {bot_id} has taken the order")
+                rospy.loginfo(f"DISPATCHER::Robot {bot_id} has taken the order")
             except rospy.ServiceException:
-                rospy.logwarn("DISPATCHER::failed to confirm order taken")
-            
-            
+                rospy.logwarn("DISPATCHER::Failed to confirm order taken")
+
+            # Record the return time for the robot
+            self.robot_return_times[bot_id] = time.time()
+
             self.pizzas_delivered += len(delivery) // 2
-            rospy.loginfo(f"DISPATCHER::Total pizzas delivered: {self.pizzas_delivered}/{self.total_pizzas_goal}")
             self.rate.sleep()
-        
-        #write summary after all pizzas are delivered
+
+        # Write summary after all pizzas are delivered
         self.write_summary()
             
     def write_summary(self):
@@ -192,12 +204,18 @@ class Dispatcher:
         avg_time = total_time / self.pizzas_delivered if self.pizzas_delivered > 0 else 0
 
         summary = (
+            f"SEED: {self.seed}\n"
             f"NUM_OF_HOUSES: {len(self.houses)}\n"
             f"NUM_OF_OBSTACLES: {self.settings.get('NUM_OBSTACLES', 'N/A')}\n"
             f"STOPS_PER_TRIP: {self.stops_per_trip}\n"
             f"NUM_OF_PIZZAS_DELIVERED: {self.pizzas_delivered}\n"
             f"TOTAL_TIME: {total_time:.2f} seconds\n"
             f"AVG_TIME_PER_PIZZA: {avg_time:.2f} seconds\n"
+            f"DISPATCHER PARAMETERS:\n"
+            f"  MIN_PIZZAS: {self.min_pizzas}\n"
+            f"  MAX_PIZZAS: {self.max_pizzas}\n"
+            f"  LOAD_CAPACITY: {self.load_capacity}\n"
+            f"  TOTAL_PIZZAS_GOAL: {self.total_pizzas_goal}\n"
         )
 
         timestamp = time.strftime("%Y%m%d-%H%M%S")
