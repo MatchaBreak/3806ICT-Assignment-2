@@ -13,7 +13,9 @@ class SpawnEntities:
         # Load settings from YAML
         self.settings = load_shared_settings()
         self.seed = self.settings.get("SEED", 1)
+        
         random.seed(self.seed)
+        
         self.num_houses = self.settings.get("NUM_HOUSES", 4)
         self.num_obstacles = self.settings.get("NUM_OBSTACLES", 10)
         self.grid_min = self.settings.get("GRID_MIN", 0)
