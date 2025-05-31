@@ -5,6 +5,8 @@ from copy import deepcopy
 from networkx import DiGraph, from_numpy_array, relabel_nodes, set_node_attributes
 from numpy import array
 from vrpy import VehicleRoutingProblem
+import time
+import os
 
 from my_sim_pkg.srv import (
     GetHouseLocations,
@@ -32,7 +34,15 @@ class Dispatcher:
         self.max_pizzas = self.settings.get("MAX_PIZZAS", 5)
         self.load_capacity = self.settings.get("LOAD_CAPACITY", 10)
         self.stops_per_trip = self.settings.get("STOPS_PER_TRIP", 4)
-
+        self.total_pizzas_goal = self.settings.get("TOTAL_PIZZAS_GOAL", 20)
+        #runs until pizzas_delivered == total_pizzas_goal
+        self.pizzas_delivered = 0
+        self.start_time = time.time()
+        
+        #for the output into OUTPUT_TESTS
+        self.output_dir = os.path.join(os.path.dirname(__file__), "OUTPUT_TESTS")
+        os.makedirs(self.output_dir, exist_ok=True)
+        
         rospy.loginfo(f"DISPATCHER::Dispatcher initialized with settings: {self.settings}")
 
         # Wait for services
@@ -125,12 +135,13 @@ class Dispatcher:
             self.route_queue.append(coords)
 
     def dispatch_loop(self):
-        while not rospy.is_shutdown():
+        # means it runs until all pizzas are delivered
+        while not rospy.is_shutdown() and self.pizzas_delivered < self.total_pizzas_goal:
             try:
                 queue_response = self.listen_queue()
                 bot_id = queue_response.nextInQueue
                 if bot_id < 0:
-                    rospy.loginfo("dispatcher: No robots in queue.")
+                    rospy.loginfo("DISPATCHER::No robots in queue.")
                     rospy.sleep(2)
                     continue
             except rospy.ServiceException:
@@ -166,11 +177,43 @@ class Dispatcher:
                 rospy.loginfo(f"DISPATCHER::robot {bot_id} has taken the order")
             except rospy.ServiceException:
                 rospy.logwarn("DISPATCHER::failed to confirm order taken")
-
+            
+            
+            self.pizzas_delivered += len(delivery) // 2
+            rospy.loginfo(f"DISPATCHER::Total pizzas delivered: {self.pizzas_delivered}/{self.total_pizzas_goal}")
             self.rate.sleep()
+        
+        #write summary after all pizzas are delivered
+        self.write_summary()
+            
+    def write_summary(self):
+        end_time = time.time()
+        total_time = end_time - self.start_time
+        avg_time = total_time / self.pizzas_delivered if self.pizzas_delivered > 0 else 0
+
+        summary = (
+            f"NUM_OF_HOUSES: {len(self.houses)}\n"
+            f"NUM_OF_OBSTACLES: {self.settings.get('NUM_OBSTACLES', 'N/A')}\n"
+            f"STOPS_PER_TRIP: {self.stops_per_trip}\n"
+            f"NUM_OF_PIZZAS_DELIVERED: {self.pizzas_delivered}\n"
+            f"TOTAL_TIME: {total_time:.2f} seconds\n"
+            f"AVG_TIME_PER_PIZZA: {avg_time:.2f} seconds\n"
+        )
+
+        timestamp = time.strftime("%Y%m%d-%H%M%S")
+        filename = f"{timestamp}_test.txt"
+        filepath = os.path.join(self.output_dir, filename)
+
+        with open(filepath, "w") as f:
+            f.write(summary)
+
+        rospy.loginfo(f"DISPATCHER::Summary written to {filepath}")
+        
 
 if __name__ == "__main__":
     try:
-        Dispatcher().dispatch_loop()
+        d = Dispatcher()
+        d.dispatch_loop()
+        d.write_summary()
     except rospy.ROSInterruptException:
         pass
