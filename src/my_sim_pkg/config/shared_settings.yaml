@@ -18,3 +18,10 @@ robot_3_y: 7
 robot_4_x: 8
 robot_4_y: 9
 
+
+#dispatcher paramaters
+MIN_PIZZAS: 1 
+MAX_PIZZAS: 5
+LOAD_CAPACITY: 10
+STOPS_PER_TRIP: 4
+

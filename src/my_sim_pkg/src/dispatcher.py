@@ -1,5 +1,7 @@
 
 import rospy
+import yaml 
+import rospkg
 import random
 from copy import deepcopy
 from networkx import DiGraph, from_numpy_array, relabel_nodes, set_node_attributes
@@ -17,6 +19,21 @@ from my_sim_pkg.srv import (
 class Dispatcher:
     def __init__(self):
         rospy.init_node("dispatcher")
+        
+        # Locate the YAML file dynamically
+        rospack = rospkg.RosPack()
+        package_path = rospack.get_path("my_sim_pkg")  # Replace with your package name
+        yaml_file_path = f"{package_path}/config/shared_settings.yaml"
+
+        # Load YAML settings
+        try:
+            with open(yaml_file_path, "r") as yaml_file:
+                self.settings = yaml.safe_load(yaml_file)
+                rospy.loginfo("dispatcher: Successfully loaded shared settings.")
+        except Exception as e:
+            rospy.logerr(f"dispatcher: Failed to load shared settings: {e}")
+            self.settings = {}
+        
         rospy.wait_for_service("/get_house_locations")
         rospy.wait_for_service("/listen_to_queue")
         rospy.wait_for_service("/signal_order_ready")
@@ -27,10 +44,12 @@ class Dispatcher:
         self.signal_ready = rospy.ServiceProxy("/signal_order_ready", SignalOrderReady)
         self.listen_taken = rospy.ServiceProxy("/listen_for_order_taken", ListenForOrderTaken)
 
-        self.min_pizzas = 1
-        self.max_pizzas = 10
-        self.load_capacity = 15
-        self.stops_per_trip = 4
+        self.min_pizzas = self.settings.get("MIN_PIZZAS", 1)
+        self.max_pizzas = self.settings.get("MAX_PIZZAS", 5)
+        self.load_capacity = self.settings.get("LOAD_CAPACITY", 10)
+        self.stops_per_trip = self.settings.get("STOPS_PER_TRIP", 4)
+        rospy.loginfo(f"DISPATCHER::Dispatcher initialised with settings: {self.settings}")
+
         self.rate = rospy.Rate(1)
         self.route_queue = []
 
@@ -67,12 +86,12 @@ class Dispatcher:
             data = response.locations.data
             self.houses = [(data[i], data[i + 1]) for i in range(0, len(data) - 1, 2)]
         except rospy.ServiceException:
-            rospy.logerr("dispatcher: failed to get house locations")
+            rospy.logerr("DISPATCHER::failed to get house locations")
             return
 
-        rospy.loginfo(f"dispatcher: initialised with {len(self.houses)} house(s)")
+        rospy.loginfo(f"DISPATCHER::initialised with {len(self.houses)} house(s)")
         for idx, house in enumerate(self.houses, 1):
-            rospy.loginfo(f"dispatcher: House {idx} is located at {house}")
+            rospy.loginfo(f"DISPATCHER::House {idx} is located at {house}")
 
         self.demand_each_house = {i: random.randint(self.min_pizzas, self.max_pizzas) for i in range(len(self.houses))}
         self.building_positions = [(8, 8)] + [deepcopy(h) for h in self.houses]
@@ -119,11 +138,11 @@ class Dispatcher:
                     rospy.sleep(2)
                     continue
             except rospy.ServiceException:
-                rospy.logerr("dispatcher: failed to listen to queue")
+                rospy.logerr("DISPATCHER::failed to listen to queue")
                 self.rate.sleep()
                 continue
 
-            rospy.loginfo(f"dispatcher: Robot {bot_id} is next in queue")
+            rospy.loginfo(f"DISPATCHER::Robot {bot_id} is next in queue")
             if not self.route_queue:
                 self.generate_routes()
             if not self.route_queue:
@@ -138,19 +157,19 @@ class Dispatcher:
                 try:
                     response = self.signal_ready(order_ready)
                     if response.success:
-                        rospy.loginfo(f"dispatcher: robot {bot_id} notified successfully")
+                        rospy.loginfo(f"DISPATCHER::robot {bot_id} notified successfully")
                         break
                     else:
-                        rospy.loginfo("dispatcher: waiting for previous robot to pick up order")
+                        rospy.loginfo("DISPATCHER::waiting for previous robot to pick up order")
                 except rospy.ServiceException:
-                    rospy.logerr("dispatcher: failed to signal order readiness")
+                    rospy.logerr("DISPATCHER::failed to signal order readiness")
                 rospy.sleep(2)
 
             try:
                 self.listen_taken()
-                rospy.loginfo(f"dispatcher: robot {bot_id} has taken the order")
+                rospy.loginfo(f"DISPATCHER::robot {bot_id} has taken the order")
             except rospy.ServiceException:
-                rospy.logwarn("dispatcher: failed to confirm order taken")
+                rospy.logwarn("DISPATCHER::failed to confirm order taken")
 
             self.rate.sleep()
 
